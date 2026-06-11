@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FinPick - 내 정보</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; background: #f4f7fb; font-family: Arial, sans-serif; color: #111827; }
+      .wrap { max-width: 720px; margin: 0 auto; padding: 30px; }
+      .card { background: white; border-radius: 24px; padding: 28px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+      h1 { color: #2563eb; margin-bottom: 8px; }
+      .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+      .box { background: #eff6ff; border-radius: 14px; padding: 12px; }
+      a { color: #2563eb; text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <h1>내 정보</h1>
+        <p>회원가입 시 저장된 기본 정보입니다.</p>
+        <div class="row">
+          <div class="box"><strong>아이디</strong><br>{{ user.username }}</div>
+          <div class="box"><strong>이메일</strong><br>{{ user.email }}</div>
+        </div>
+        <div class="row">
+          <div class="box"><strong>나이</strong><br>{{ profile.age|default:'-' }}</div>
+          <div class="box"><strong>직업</strong><br>{{ profile.job|default:'-' }}</div>
+        </div>
+        <div class="row">
+          <div class="box"><strong>월 소득</strong><br>{{ profile.monthly_income|default:'-' }} 만원</div>
+          <div class="box"><strong>월 지출</strong><br>{{ profile.monthly_expense|default:'-' }} 만원</div>
+        </div>
+        <div class="row">
+          <div class="box"><strong>거주 형태</strong><br>{{ profile.residence_type|default:'-' }}</div>
+          <div class="box"><strong>저축 상태</strong><br>{{ profile.saving_status|default:'-' }}</div>
+        </div>
+        <div class="row">
+          <div class="box"><strong>투자 경험</strong><br>{{ profile.invest_experience|default:'-' }}</div>
+          <div class="box"><strong>가입일</strong><br>{{ profile.created_at|date:'Y-m-d' }}</div>
+        </div>
+        <p style="margin-top: 14px;"><a href="/">홈으로</a> | <a href="/logout/">로그아웃</a></p>
+      </div>
+    </div>
+  </body>
+</html>
