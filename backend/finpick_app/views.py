@@ -10,7 +10,7 @@ from .models import DiagnosisResult, ProductRecommendation, RoadmapStep, UserPro
 
 def index(request):
     if not request.user.is_authenticated:
-        return redirect('signup')
+        return redirect('login')
 
     roadmap = list(RoadmapStep.objects.values('step_number', 'title', 'description'))
     products = list(ProductRecommendation.objects.values('name', 'product_type', 'reason', 'category'))
@@ -34,13 +34,6 @@ def signup_view(request):
         email = request.POST.get('email', '').strip()
         password1 = request.POST.get('password1', '')
         password2 = request.POST.get('password2', '')
-        age = request.POST.get('age', '0')
-        job = request.POST.get('job', '').strip()
-        monthly_income = request.POST.get('monthly_income', '0')
-        monthly_expense = request.POST.get('monthly_expense', '0')
-        residence_type = request.POST.get('residence_type', '').strip()
-        saving_status = request.POST.get('saving_status', '').strip()
-        invest_experience = request.POST.get('invest_experience', '').strip()
 
         if not username or not email or not password1 or not password2:
             messages.error(request, '필수 항목을 모두 입력해 주세요.')
@@ -53,16 +46,7 @@ def signup_view(request):
             return render(request, 'signup.html')
 
         user = User.objects.create_user(username=username, email=email, password=password1)
-        UserProfile.objects.create(
-            user=user,
-            age=int(age) if age else None,
-            job=job,
-            monthly_income=int(monthly_income) if monthly_income else None,
-            monthly_expense=int(monthly_expense) if monthly_expense else None,
-            residence_type=residence_type,
-            saving_status=saving_status,
-            invest_experience=invest_experience,
-        )
+        UserProfile.objects.create(user=user)
         login(request, user)
         messages.success(request, '회원가입이 완료되었습니다.')
         return redirect('index')

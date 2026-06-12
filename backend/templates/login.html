@@ -24,12 +24,6 @@
         <h1>FinPick 로그인</h1>
         <p>회원가입한 계정으로 로그인해 주세요.</p>
 
-        {% if messages %}
-          {% for message in messages %}
-            <div class="msg {% if message.tags == 'success' %}ok{% endif %}">{{ message }}</div>
-          {% endfor %}
-        {% endif %}
-
         <form method="post">
           {% csrf_token %}
           <label>아이디</label>

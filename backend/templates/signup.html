@@ -23,13 +23,7 @@
     <div class="wrap">
       <div class="card">
         <h1>FinPick 회원가입</h1>
-        <p>기본 정보와 금융 성향을 저장해 맞춤 추천을 시작해 보세요.</p>
-
-        {% if messages %}
-          {% for message in messages %}
-            <div class="msg {% if message.tags == 'success' %}ok{% endif %}">{{ message }}</div>
-          {% endfor %}
-        {% endif %}
+        <p>기본 정보만 입력하면 금융 진단을 시작할 수 있습니다.</p>
 
         <form method="post">
           {% csrf_token %}
@@ -53,42 +47,6 @@
               <input type="password" name="password2" required />
             </div>
           </div>
-          <div class="row">
-            <div>
-              <label>나이</label>
-              <input type="number" name="age" min="18" max="99" />
-            </div>
-            <div>
-              <label>직업</label>
-              <input name="job" />
-            </div>
-          </div>
-          <div class="row">
-            <div>
-              <label>월 소득(만원)</label>
-              <input type="number" name="monthly_income" />
-            </div>
-            <div>
-              <label>월 지출(만원)</label>
-              <input type="number" name="monthly_expense" />
-            </div>
-          </div>
-          <div class="row">
-            <div>
-              <label>거주 형태</label>
-              <input name="residence_type" placeholder="예: 서울 자취" />
-            </div>
-            <div>
-              <label>저축 상태</label>
-              <input name="saving_status" placeholder="예: 매달 10만원 저축" />
-            </div>
-          </div>
-          <label>투자 경험</label>
-          <select name="invest_experience">
-            <option value="없음">없음</option>
-            <option value="조금 있음">조금 있음</option>
-            <option value="꾸준히 하는 중">꾸준히 하는 중</option>
-          </select>
           <button class="btn" type="submit">회원가입 완료</button>
         </form>
         <p style="margin-top: 12px;">이미 계정이 있나요? <a href="/login/">로그인</a></p>
