@@ -15,4 +15,5 @@ urlpatterns = [
     path('api/deposit-products/<int:product_id>/', views.api_deposit_product_detail, name='api_deposit_product_detail'),
     path('api/deposit-products/<int:product_id>/join/', views.api_join_deposit_product, name='api_join_deposit_product'),
     path('api/bank-route/', views.api_bank_route, name='api_bank_route'),
+    path('api/spot-prices/', views.api_spot_prices, name='api_spot_prices'),
 ]

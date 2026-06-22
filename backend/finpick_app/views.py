@@ -1,4 +1,9 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
+from decimal import Decimal, InvalidOperation
+from functools import lru_cache
+from pathlib import Path
+from zipfile import ZipFile
+import xml.etree.ElementTree as ET
 
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
@@ -22,6 +27,19 @@ from .models import (
     UserDepositSubscription,
     UserProfile,
 )
+
+
+XLSX_NS = {'a': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
+SPOT_PRICE_FILES = {
+    'gold': {
+        'name': '금',
+        'path': Path.home() / 'Downloads' / 'Gold_prices.xlsx',
+    },
+    'silver': {
+        'name': '은',
+        'path': Path.home() / 'Downloads' / 'Silver_prices.xlsx',
+    },
+}
 
 
 TYPE_CONTENT = {
@@ -483,6 +501,124 @@ def api_user_mission(request, mission_id):
 def api_products(request):
     products = list(ProductRecommendation.objects.values('name', 'product_type', 'reason', 'category'))
     return JsonResponse({'products': products})
+
+
+def xlsx_column_index(cell_ref):
+    letters = ''.join(char for char in cell_ref if char.isalpha())
+    index = 0
+    for char in letters:
+        index = index * 26 + ord(char.upper()) - 64
+    return index - 1
+
+
+def parse_xlsx_date(value):
+    if isinstance(value, str):
+        value = value.strip()
+    try:
+        serial = int(float(value))
+    except (TypeError, ValueError):
+        return None
+    return date(1899, 12, 30) + timedelta(days=serial)
+
+
+def parse_decimal(value):
+    if value is None:
+        return None
+    try:
+        return Decimal(str(value).replace(',', '').strip())
+    except (InvalidOperation, ValueError):
+        return None
+
+
+def get_shared_strings(zip_file):
+    try:
+        root = ET.fromstring(zip_file.read('xl/sharedStrings.xml'))
+    except KeyError:
+        return []
+    strings = []
+    for item in root.findall('a:si', XLSX_NS):
+        texts = [text.text or '' for text in item.findall('.//a:t', XLSX_NS)]
+        strings.append(''.join(texts))
+    return strings
+
+
+def get_first_sheet_path(zip_file):
+    workbook = ET.fromstring(zip_file.read('xl/workbook.xml'))
+    relationships = ET.fromstring(zip_file.read('xl/_rels/workbook.xml.rels'))
+    relationship_map = {
+        relationship.attrib['Id']: relationship.attrib['Target']
+        for relationship in relationships
+    }
+    sheet = workbook.find('a:sheets/a:sheet', XLSX_NS)
+    relation_id = sheet.attrib['{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id']
+    target = relationship_map[relation_id]
+    return f"xl/{target.lstrip('/')}"
+
+
+@lru_cache(maxsize=4)
+def load_spot_price_file(asset):
+    config = SPOT_PRICE_FILES[asset]
+    path = config['path']
+    if not path.exists():
+        return []
+
+    with ZipFile(path) as zip_file:
+        shared_strings = get_shared_strings(zip_file)
+        sheet = ET.fromstring(zip_file.read(get_first_sheet_path(zip_file)))
+        rows = []
+        for row in sheet.findall('.//a:sheetData/a:row', XLSX_NS):
+            values = []
+            for cell in row.findall('a:c', XLSX_NS):
+                column_index = xlsx_column_index(cell.attrib.get('r', 'A'))
+                while len(values) <= column_index:
+                    values.append(None)
+                value_node = cell.find('a:v', XLSX_NS)
+                value = value_node.text if value_node is not None else ''
+                if cell.attrib.get('t') == 's' and value:
+                    value = shared_strings[int(value)]
+                values[column_index] = value
+            rows.append(values)
+
+    if not rows:
+        return []
+
+    headers = [str(header).strip() if header is not None else '' for header in rows[0]]
+    date_index = headers.index('Date') if 'Date' in headers else 0
+    close_index = headers.index('Close/Last') if 'Close/Last' in headers else 1
+    prices = []
+    for row in rows[1:]:
+        if len(row) <= max(date_index, close_index):
+            continue
+        price_date = parse_xlsx_date(row[date_index])
+        close_price = parse_decimal(row[close_index])
+        if price_date is None or close_price is None:
+            continue
+        prices.append({
+            'date': price_date.isoformat(),
+            'price': float(close_price),
+        })
+    return sorted(prices, key=lambda item: item['date'])
+
+
+@login_required
+def api_spot_prices(request):
+    asset = request.GET.get('asset', 'gold').strip().lower()
+    start = request.GET.get('start', '').strip()
+    end = request.GET.get('end', '').strip()
+    if asset not in SPOT_PRICE_FILES:
+        return JsonResponse({'message': '지원하지 않는 현물 자산입니다.'}, status=400)
+
+    prices = load_spot_price_file(asset)
+    if start:
+        prices = [item for item in prices if item['date'] >= start]
+    if end:
+        prices = [item for item in prices if item['date'] <= end]
+
+    return JsonResponse({
+        'asset': asset,
+        'asset_name': SPOT_PRICE_FILES[asset]['name'],
+        'prices': prices,
+    })
 
 
 def serialize_deposit_product(product):

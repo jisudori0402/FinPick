@@ -222,6 +222,19 @@
       .category-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 18px; }
       .category-tabs button { border: 1px solid #dbe3f0; border-radius: 14px; background: white; color: #334155; cursor: pointer; font-weight: 800; padding: 14px; }
       .category-tabs button.active { background: #1d5fe9; color: white; border-color: #1d5fe9; }
+      .spot-toolbar { display: grid; grid-template-columns: 180px 180px 180px; gap: 10px; margin-top: 18px; align-items: end; }
+      .spot-toolbar label { color: #475569; font-size: 13px; font-weight: 800; }
+      .spot-toolbar input { width: 100%; margin-top: 6px; padding: 12px; border: 1px solid #d1d5db; border-radius: 12px; }
+      .spot-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
+      .spot-summary div { border: 1px solid #e5e7eb; border-radius: 14px; padding: 14px; background: #f8fafc; }
+      .spot-summary small { display: block; color: #64748b; margin-bottom: 6px; }
+      .spot-chart { width: 100%; height: 320px; margin-top: 18px; border: 1px solid #e5e7eb; border-radius: 16px; background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%); }
+      .spot-chart polyline { fill: none; stroke: #1d5fe9; stroke-width: 3; }
+      .spot-chart circle { fill: #1d5fe9; }
+      .spot-axis { stroke: #cbd5e1; stroke-width: 1; }
+      .spot-grid { stroke: #e5e7eb; stroke-width: 1; }
+      .spot-label { fill: #475569; font-size: 12px; font-weight: 700; }
+      .spot-title { fill: #1e293b; font-size: 13px; font-weight: 800; }
       .rate { color: #1d5fe9; font-size: 26px; font-weight: 900; margin-top: 12px; }
       .detail-table { width: 100%; border-collapse: collapse; margin-top: 14px; }
       .detail-table th, .detail-table td { padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: left; }
@@ -241,7 +254,7 @@
         .hero-copy h2 { font-size: 30px; }
         nav { gap: 10px; }
         nav button, .pill-link { padding: 12px 18px; font-size: 16px; }
-        .filter-row, .category-tabs { grid-template-columns: 1fr; }
+        .filter-row, .category-tabs, .spot-toolbar, .spot-summary { grid-template-columns: 1fr; }
       }
     </style>
   </head>
@@ -255,7 +268,7 @@
             <button @click="goHome">홈</button>
             <button @click="goToDiagnosis">금융 진단</button>
             <button @click="goToRoadmap">로드맵</button>
-            <button @click="goToProducts">추천 상품</button>
+            <button @click="goToProducts">모든 상품</button>
           </nav>
         </header>
 
@@ -294,7 +307,7 @@
             </div>
             <div class="feature-card panel">
               <div class="feature-icon" style="background:#f3e8ff;">🎁</div>
-              <h3>추천 상품</h3>
+              <h3>모든 상품</h3>
               <p>지금 필요한 금융상품을<br />추천해드려요.</p>
             </div>
           </section>
@@ -524,13 +537,13 @@
           </section>
 
           <section v-if="page==='products'" class="card panel">
-            <h2>추천 상품</h2>
+            <h2>모든 상품</h2>
 
             <div class="category-tabs">
               <button :class="{ active: productCategory === 'deposit' }" @click="setProductCategory('deposit')">예적금</button>
               <button :class="{ active: productCategory === 'card' }" @click="setProductCategory('card')">카드</button>
-              <button :class="{ active: productCategory === 'loan' }" @click="setProductCategory('loan')">대출</button>
-              <button :class="{ active: productCategory === 'investment' }" @click="setProductCategory('investment')">투자</button>
+              <button :class="{ active: productCategory === 'loan' }" @click="setProductCategory('loan')">주식</button>
+              <button :class="{ active: productCategory === 'investment' }" @click="setProductCategory('investment')">현물</button>
             </div>
 
             <div v-if="productCategory === 'deposit'" class="filter-row">
@@ -568,11 +581,70 @@
               </div>
             </div>
 
-            <div v-if="productCategory !== 'deposit' && !filteredRecommendations.length" class="empty">
+            <div v-if="productCategory === 'investment'" class="result-box">
+              <h3>현물 가격 변동</h3>
+              <div class="category-tabs" style="grid-template-columns: repeat(2, 1fr);">
+                <button :class="{ active: spotFilters.asset === 'gold' }" @click="setSpotAsset('gold')">금(Gold)</button>
+                <button :class="{ active: spotFilters.asset === 'silver' }" @click="setSpotAsset('silver')">은(Silver)</button>
+              </div>
+              <div class="spot-toolbar">
+                <label>
+                  시작일
+                  <input type="date" v-model="spotFilters.start" @change="loadSpotPrices" />
+                </label>
+                <label>
+                  종료일
+                  <input type="date" v-model="spotFilters.end" @change="loadSpotPrices" />
+                </label>
+                <button class="secondary-btn" style="min-height:44px;" @click="resetSpotPeriod">전체 기간</button>
+              </div>
+              <p v-if="spotMessage" class="lock-note" v-text="spotMessage"></p>
+              <div v-if="spotPrices.length" class="spot-summary">
+                <div>
+                  <small>선택 자산</small>
+                  <strong v-text="spotAssetName"></strong>
+                </div>
+                <div>
+                  <small>최근 가격</small>
+                  <strong v-text="spotLatestPrice"></strong>
+                </div>
+                <div>
+                  <small>조회 기간</small>
+                  <strong v-text="spotDateRange"></strong>
+                </div>
+              </div>
+              <svg v-if="spotChartPoints" class="spot-chart" viewBox="0 0 720 320" preserveAspectRatio="none">
+                <g v-for="tick in spotYAxisTicks" :key="`y-${tick.label}`">
+                  <line class="spot-grid" :x1="44" :y1="tick.y" :x2="696" :y2="tick.y"></line>
+                  <text class="spot-label" :x="38" :y="tick.y + 4" text-anchor="end" v-text="tick.label"></text>
+                </g>
+                <g v-for="tick in spotXAxisTicks" :key="`x-${tick.label}`">
+                  <line class="spot-grid" :x1="tick.x" :y1="286" :x2="tick.x" :y2="292"></line>
+                  <text class="spot-label" :x="tick.x" y="308" text-anchor="middle" v-text="tick.label"></text>
+                </g>
+                <line class="spot-axis" x1="44" y1="24" x2="44" y2="286"></line>
+                <line class="spot-axis" x1="44" y1="286" x2="696" y2="286"></line>
+                <text class="spot-title" x="44" y="16">가격($)</text>
+                <text class="spot-title" x="696" y="318" text-anchor="end">날짜</text>
+                <polyline :points="spotChartPoints"></polyline>
+                <circle
+                  v-for="point in spotChartDots"
+                  :key="point.date"
+                  :cx="point.x"
+                  :cy="point.y"
+                  r="4"
+                >
+                  <title v-text="`${point.date} ${point.price}`"></title>
+                </circle>
+              </svg>
+              <div v-if="!spotPrices.length" class="empty">선택한 기간의 현물 가격 데이터가 없습니다.</div>
+            </div>
+
+            <div v-if="productCategory !== 'deposit' && productCategory !== 'investment' && !filteredRecommendations.length" class="empty">
               해당 카테고리 상품은 아직 준비 중입니다.
             </div>
 
-            <div v-if="productCategory !== 'deposit'" class="product product-card" v-for="item in filteredRecommendations" :key="item.name">
+            <div v-if="productCategory !== 'deposit' && productCategory !== 'investment'" class="product product-card" v-for="item in filteredRecommendations" :key="item.name">
               <small v-text="categoryLabel(productCategory)"></small>
               <h3 v-text="item.name"></h3>
               <p v-text="item.product_type"></p>
@@ -684,6 +756,14 @@
             kind: '',
             ordering: 'rate',
           });
+          const spotFilters = ref({
+            asset: 'gold',
+            start: '',
+            end: '',
+          });
+          const spotPrices = ref([]);
+          const spotAssetName = ref('금');
+          const spotMessage = ref('');
           const latestResult = JSON.parse(document.getElementById('latest-result').textContent || 'null');
           const emptyResult = {
             financial_type: '',
@@ -726,8 +806,8 @@
             return {
               deposit: '예적금',
               card: '카드',
-              loan: '대출',
-              investment: '투자',
+              loan: '주식',
+              investment: '현물',
             }[category] || '상품';
           };
           const filteredRecommendations = computed(() => {
@@ -740,6 +820,64 @@
             return depositProducts.value.filter((item) => {
               return item.product_name.toLowerCase().includes(keyword);
             });
+          });
+          const spotLatestPrice = computed(() => {
+            if (!spotPrices.value.length) return '-';
+            const latest = spotPrices.value[spotPrices.value.length - 1];
+            return `$${latest.price.toLocaleString()}`;
+          });
+          const spotDateRange = computed(() => {
+            if (!spotPrices.value.length) return '-';
+            return `${spotPrices.value[0].date} ~ ${spotPrices.value[spotPrices.value.length - 1].date}`;
+          });
+          const spotChartDots = computed(() => {
+            if (!spotPrices.value.length) return [];
+            const width = 720;
+            const height = 320;
+            const padding = { left: 44, right: 24, top: 24, bottom: 34 };
+            const values = spotPrices.value.map((item) => Number(item.price));
+            const min = Math.min(...values);
+            const max = Math.max(...values);
+            const range = max - min || 1;
+            return spotPrices.value.map((item, index) => {
+              const x = padding.left + ((width - padding.left - padding.right) * index) / Math.max(spotPrices.value.length - 1, 1);
+              const y = padding.top + ((max - Number(item.price)) / range) * (height - padding.top - padding.bottom);
+              return {
+                x: Number(x.toFixed(2)),
+                y: Number(y.toFixed(2)),
+                date: item.date,
+                price: `$${Number(item.price).toLocaleString()}`,
+              };
+            });
+          });
+          const spotChartPoints = computed(() => {
+            return spotChartDots.value.map((point) => `${point.x},${point.y}`).join(' ');
+          });
+          const spotYAxisTicks = computed(() => {
+            if (!spotPrices.value.length) return [];
+            const values = spotPrices.value.map((item) => Number(item.price));
+            const min = Math.min(...values);
+            const max = Math.max(...values);
+            const range = max - min || 1;
+            return [0, 1, 2, 3, 4].map((step) => {
+              const ratio = step / 4;
+              const price = max - range * ratio;
+              const y = 24 + ratio * (286 - 24);
+              return {
+                y: Number(y.toFixed(2)),
+                label: `$${price.toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+              };
+            });
+          });
+          const spotXAxisTicks = computed(() => {
+            if (!spotChartDots.value.length) return [];
+            const dots = spotChartDots.value;
+            const tickIndexes = [0, Math.floor((dots.length - 1) / 2), dots.length - 1]
+              .filter((value, index, array) => array.indexOf(value) === index);
+            return tickIndexes.map((index) => ({
+              x: dots[index].x,
+              label: dots[index].date.slice(0, 7),
+            }));
           });
           const profileScoreItems = computed(() => {
             return Object.entries(result.value.profile_scores || {}).map(([label, stars]) => ({
@@ -839,10 +977,44 @@
             selectedDepositProduct.value = null;
           };
 
+          const loadSpotPrices = async () => {
+            if (!isAuthenticated) return;
+            spotMessage.value = '';
+            const params = new URLSearchParams();
+            Object.entries(spotFilters.value).forEach(([key, value]) => {
+              if (value) params.append(key, value);
+            });
+            const response = await fetch(`/api/spot-prices/?${params.toString()}`);
+            const data = await response.json();
+            if (!response.ok) {
+              spotPrices.value = [];
+              spotMessage.value = data.message || '현물 가격 데이터를 불러오지 못했습니다.';
+              return;
+            }
+            spotPrices.value = data.prices || [];
+            spotAssetName.value = data.asset_name || categoryLabel('investment');
+            if (!spotPrices.value.length) {
+              spotMessage.value = '선택한 기간에 해당하는 데이터가 없습니다.';
+            }
+          };
+
+          const setSpotAsset = async (asset) => {
+            spotFilters.value.asset = asset;
+            await loadSpotPrices();
+          };
+
+          const resetSpotPeriod = async () => {
+            spotFilters.value.start = '';
+            spotFilters.value.end = '';
+            await loadSpotPrices();
+          };
+
           const goToProducts = async () => {
             if (!requireLogin()) return;
             if (productCategory.value === 'deposit') {
               await loadDepositProducts();
+            } else if (productCategory.value === 'investment') {
+              await loadSpotPrices();
             }
             page.value = 'products';
           };
@@ -852,6 +1024,8 @@
             selectedDepositProduct.value = null;
             if (category === 'deposit') {
               await loadDepositProducts();
+            } else if (category === 'investment') {
+              await loadSpotPrices();
             }
           };
 
@@ -1117,11 +1291,21 @@
             routeMessage,
             nearbyBanks,
             productFilters,
+            spotFilters,
+            spotPrices,
+            spotAssetName,
+            spotMessage,
             result,
             profileScoreItems,
             quotedComment,
             filteredRecommendations,
             displayedDepositProducts,
+            spotLatestPrice,
+            spotDateRange,
+            spotChartDots,
+            spotChartPoints,
+            spotXAxisTicks,
+            spotYAxisTicks,
             categoryLabel,
             dashboardMissions,
             firstPendingIndex,
@@ -1135,6 +1319,9 @@
             goToRoadmap,
             goToProducts,
             setProductCategory,
+            setSpotAsset,
+            resetSpotPeriod,
+            loadSpotPrices,
             loadDepositProducts,
             openDepositProduct,
             joinDepositProduct,
