@@ -1,6 +1,10 @@
+import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / '.env')
+load_dotenv(BASE_DIR.parent / '.env')
 
 SECRET_KEY = 'dev-secret-key-finpick'
 DEBUG = True
@@ -62,3 +66,5 @@ USE_TZ = True
 STATIC_URL = 'static/'
 LOGIN_URL = 'login'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+KAKAO_MAP_APP_KEY = os.getenv('KAKAO_MAP_APP_KEY', '')
+KAKAO_MOBILITY_REST_KEY = os.getenv('KAKAO_MOBILITY_REST_KEY', '')

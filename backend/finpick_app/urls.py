@@ -13,4 +13,6 @@ urlpatterns = [
     path('api/products/', views.api_products, name='api_products'),
     path('api/deposit-products/', views.api_deposit_products, name='api_deposit_products'),
     path('api/deposit-products/<int:product_id>/', views.api_deposit_product_detail, name='api_deposit_product_detail'),
+    path('api/deposit-products/<int:product_id>/join/', views.api_join_deposit_product, name='api_join_deposit_product'),
+    path('api/bank-route/', views.api_bank_route, name='api_bank_route'),
 ]

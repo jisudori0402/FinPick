@@ -4,10 +4,12 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
+from django.conf import settings
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
+import requests
 
 from .models import (
     DepositProduct,
@@ -17,6 +19,7 @@ from .models import (
     RoadmapStep,
     RoadmapTemplate,
     UserMission,
+    UserDepositSubscription,
     UserProfile,
 )
 
@@ -108,6 +111,7 @@ def index(request):
         'initial_products': products,
         'latest_diagnosis': latest_diagnosis,
         'latest_result': diagnosis_to_payload(latest_diagnosis) if latest_diagnosis else None,
+        'kakao_map_app_key': settings.KAKAO_MAP_APP_KEY,
     })
 
 
@@ -538,10 +542,15 @@ def api_deposit_product_detail(request, product_id):
     product = DepositProduct.objects.prefetch_related('options').filter(id=product_id).first()
     if product is None:
         return JsonResponse({'message': '상품을 찾을 수 없습니다.'}, status=404)
+    is_subscribed = (
+        request.user.is_authenticated
+        and UserDepositSubscription.objects.filter(user=request.user, product=product).exists()
+    )
 
     return JsonResponse({
         'product': {
             **serialize_deposit_product(product),
+            'is_subscribed': is_subscribed,
             'product_code': product.product_code,
             'disclosure_month': product.disclosure_month,
             'maturity_interest': product.maturity_interest,
@@ -559,4 +568,73 @@ def api_deposit_product_detail(request, product_id):
                 for option in product.options.all()
             ],
         }
+    })
+
+
+@login_required
+def api_bank_route(request):
+    destination_lng = request.GET.get('lng', '').strip()
+    destination_lat = request.GET.get('lat', '').strip()
+    if not destination_lng or not destination_lat:
+        return JsonResponse({'message': '목적지 좌표가 필요합니다.'}, status=400)
+    if not settings.KAKAO_MOBILITY_REST_KEY:
+        return JsonResponse({'message': '.env에 KAKAO_MOBILITY_REST_KEY를 설정해 주세요.'}, status=400)
+
+    try:
+        response = requests.get(
+            'https://apis-navi.kakaomobility.com/v1/directions',
+            headers={'Authorization': f'KakaoAK {settings.KAKAO_MOBILITY_REST_KEY}'},
+            params={
+                'origin': '127.039585,37.5012743',
+                'destination': f'{destination_lng},{destination_lat}',
+                'priority': 'RECOMMEND',
+            },
+            timeout=15,
+        )
+        response.raise_for_status()
+        data = response.json()
+    except requests.RequestException as exc:
+        return JsonResponse({'message': f'경로 API 요청에 실패했습니다: {exc}'}, status=502)
+
+    routes = data.get('routes') or []
+    if not routes:
+        return JsonResponse({'message': '경로를 찾지 못했습니다.'}, status=404)
+
+    route = routes[0]
+    points = []
+    for section in route.get('sections', []):
+        for road in section.get('roads', []):
+            vertexes = road.get('vertexes', [])
+            for index in range(0, len(vertexes), 2):
+                points.append({
+                    'lng': vertexes[index],
+                    'lat': vertexes[index + 1],
+                })
+
+    summary = route.get('summary', {})
+    return JsonResponse({
+        'distance': summary.get('distance'),
+        'duration': summary.get('duration'),
+        'points': points,
+    })
+
+
+@csrf_exempt
+@login_required
+def api_join_deposit_product(request, product_id):
+    if request.method != 'POST':
+        return JsonResponse({'message': 'POST 요청만 지원합니다.'}, status=405)
+
+    product = DepositProduct.objects.filter(id=product_id).first()
+    if product is None:
+        return JsonResponse({'message': '상품을 찾을 수 없습니다.'}, status=404)
+
+    subscription, created = UserDepositSubscription.objects.get_or_create(
+        user=request.user,
+        product=product,
+    )
+    return JsonResponse({
+        'message': '가입 목록에 추가했습니다.' if created else '이미 가입 목록에 있는 상품입니다.',
+        'is_subscribed': True,
+        'subscription_id': subscription.id,
     })

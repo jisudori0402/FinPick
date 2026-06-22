@@ -163,3 +163,16 @@ class DepositOption(models.Model):
 
     def __str__(self):
         return f'{self.product} / {self.saving_term}개월'
+
+
+class UserDepositSubscription(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='deposit_subscriptions')
+    product = models.ForeignKey(DepositProduct, on_delete=models.CASCADE, related_name='user_subscriptions')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        unique_together = ('user', 'product')
+
+    def __str__(self):
+        return f'{self.user} - {self.product}'

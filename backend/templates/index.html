@@ -223,6 +223,13 @@
       .detail-table { width: 100%; border-collapse: collapse; margin-top: 14px; }
       .detail-table th, .detail-table td { padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: left; }
       .empty { padding: 28px; text-align: center; color: #64748b; }
+      .button-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+      .button-row .primary-btn, .button-row .secondary-btn { max-width: 220px; }
+      .map-box { width: 100%; height: 420px; border-radius: 18px; overflow: hidden; border: 1px solid #e5e7eb; margin-top: 16px; }
+      .bank-list { display: grid; gap: 10px; margin-top: 16px; }
+      .bank-item { padding: 14px; border: 1px solid #e5e7eb; border-radius: 14px; background: white; cursor: pointer; }
+      .bank-item:hover { border-color: #1d5fe9; }
+      .bank-item h3 { margin: 0 0 6px; }
       @media (max-width: 800px) {
         header h1 { font-size: 42px; }
         header p { font-size: 18px; }
@@ -599,6 +606,16 @@
             <p><strong>가입 대상</strong> <span v-text="selectedDepositProduct.join_member || '-'"></span></p>
             <p><strong>우대 조건</strong> <span v-text="selectedDepositProduct.special_condition || '-'"></span></p>
             <p><strong>기타 안내</strong> <span v-text="selectedDepositProduct.etc_note || '-'"></span></p>
+            <div class="button-row">
+              <button
+                class="primary-btn"
+                :disabled="selectedDepositProduct.is_subscribed"
+                @click="joinDepositProduct(selectedDepositProduct.id)"
+                v-text="selectedDepositProduct.is_subscribed ? '가입 목록에 추가됨' : '가입하기'"
+              ></button>
+              <button class="secondary-btn" @click="goToBankSearch">근처 은행 검색</button>
+            </div>
+            <p v-if="joinMessage" class="lock-note" v-text="joinMessage"></p>
             <table class="detail-table">
               <thead>
                 <tr>
@@ -618,6 +635,29 @@
               </tbody>
             </table>
           </section>
+
+          <section v-if="page==='bankSearch'" class="card panel">
+            <button class="secondary-btn" style="max-width:180px;" @click="page='productDetail'">상품 상세로</button>
+            <h2>근처 은행 검색</h2>
+            <p v-if="selectedDepositProduct">
+              <strong v-text="selectedDepositProduct.financial_company_name"></strong>
+              <span> 영업점을 지도에서 찾아보세요.</span>
+            </p>
+            <div class="filter-row" style="grid-template-columns: 1fr 160px;">
+              <input v-model="bankSearchKeyword" placeholder="주소 또는 장소를 입력하세요" @keyup.enter="searchBankLocation" />
+              <button class="primary-btn" style="min-height:48px;" @click="searchBankLocation">검색</button>
+            </div>
+            <p v-if="bankSearchMessage" class="lock-note" v-text="bankSearchMessage"></p>
+            <p v-if="routeMessage" class="lock-note" v-text="routeMessage"></p>
+            <div id="bank-map" class="map-box"></div>
+            <div class="bank-list">
+              <div class="bank-item" v-for="bank in nearbyBanks" :key="bank.id || bank.place_name" @click="moveToBank(bank)">
+                <h3 v-text="bank.place_name"></h3>
+                <p v-text="bank.road_address_name || bank.address_name || '-'"></p>
+                <small v-text="bank.distance ? bank.distance + 'm' : ''"></small>
+              </div>
+            </div>
+          </section>
         {% endif %}
       </div>
     </div>
@@ -630,6 +670,7 @@
       createApp({
         setup() {
           const isAuthenticated = {{ user.is_authenticated|yesno:'true,false' }};
+          const kakaoMapAppKey = "{{ kakao_map_app_key|default:''|escapejs }}";
           const page = ref('home');
           const diagnosisError = ref('');
           const roadmap = ref({
@@ -644,6 +685,16 @@
           const depositProducts = ref([]);
           const productCompanies = ref([]);
           const selectedDepositProduct = ref(null);
+          const joinMessage = ref('');
+          const bankSearchKeyword = ref('');
+          const bankSearchMessage = ref('');
+          const nearbyBanks = ref([]);
+          let bankMap = null;
+          let bankMarkers = [];
+          let bankInfoWindow = null;
+          let routePolyline = null;
+          let routeStartMarker = null;
+          const routeMessage = ref('');
           const productFilters = ref({
             q: '',
             company: '',
@@ -791,8 +842,206 @@
             const data = await response.json();
             if (response.ok) {
               selectedDepositProduct.value = data.product;
+              joinMessage.value = '';
               page.value = 'productDetail';
             }
+          };
+
+          const joinDepositProduct = async (productId) => {
+            const response = await fetch(`/api/deposit-products/${productId}/join/`, { method: 'POST' });
+            const data = await response.json();
+            joinMessage.value = data.message || '';
+            if (response.ok && selectedDepositProduct.value) {
+              selectedDepositProduct.value.is_subscribed = true;
+            }
+          };
+
+          const loadKakaoMap = () => {
+            return new Promise((resolve, reject) => {
+              if (!kakaoMapAppKey) {
+                reject(new Error('Kakao Maps JavaScript 키가 설정되지 않았습니다.'));
+                return;
+              }
+              if (window.kakao && window.kakao.maps) {
+                window.kakao.maps.load(resolve);
+                return;
+              }
+              const script = document.createElement('script');
+              script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${kakaoMapAppKey}&libraries=services&autoload=false`;
+              script.onload = () => window.kakao.maps.load(resolve);
+              script.onerror = () => reject(new Error('Kakao Maps를 불러오지 못했습니다.'));
+              document.head.appendChild(script);
+            });
+          };
+
+          const clearBankMarkers = () => {
+            bankMarkers.forEach((marker) => marker.setMap(null));
+            bankMarkers = [];
+            if (bankInfoWindow) {
+              bankInfoWindow.close();
+            }
+          };
+
+          const clearRoute = () => {
+            if (routePolyline) {
+              routePolyline.setMap(null);
+              routePolyline = null;
+            }
+            if (routeStartMarker) {
+              routeStartMarker.setMap(null);
+              routeStartMarker = null;
+            }
+            routeMessage.value = '';
+          };
+
+          const renderBankMap = async (lat = 37.566826, lng = 126.9786567) => {
+            await loadKakaoMap();
+            const container = document.getElementById('bank-map');
+            const center = new window.kakao.maps.LatLng(lat, lng);
+            bankMap = new window.kakao.maps.Map(container, { center, level: 4 });
+            bankInfoWindow = new window.kakao.maps.InfoWindow({ zIndex: 1 });
+            clearRoute();
+          };
+
+          const normalizeBankName = (name) => {
+            return (name || '')
+              .replace(/주식회사/g, '')
+              .replace(/\(주\)/g, '')
+              .replace(/은행/g, '은행')
+              .trim();
+          };
+
+          const searchNearbyBanks = (lat, lng) => {
+            const places = new window.kakao.maps.services.Places();
+            const location = new window.kakao.maps.LatLng(lat, lng);
+            const bankName = normalizeBankName(selectedDepositProduct.value?.financial_company_name);
+            const keyword = bankName || '은행';
+
+            places.keywordSearch(keyword, (data, status) => {
+              if (status !== window.kakao.maps.services.Status.OK) {
+                nearbyBanks.value = [];
+                bankSearchMessage.value = `${keyword} 영업점을 찾지 못했습니다.`;
+                return;
+              }
+              clearBankMarkers();
+              const filteredBanks = data.filter((bank) => {
+                return !bankName || bank.place_name.includes(bankName.replace('은행', '')) || bank.place_name.includes(bankName);
+              });
+              nearbyBanks.value = filteredBanks;
+              filteredBanks.forEach((bank) => {
+                const position = new window.kakao.maps.LatLng(bank.y, bank.x);
+                const marker = new window.kakao.maps.Marker({ map: bankMap, position });
+                window.kakao.maps.event.addListener(marker, 'mouseover', () => {
+                  bankInfoWindow.setContent(`<div style="padding:6px 10px;font-size:13px;">${bank.place_name}</div>`);
+                  bankInfoWindow.open(bankMap, marker);
+                });
+                window.kakao.maps.event.addListener(marker, 'mouseout', () => {
+                  bankInfoWindow.close();
+                });
+                bankMarkers.push(marker);
+              });
+              bankMap.setCenter(location);
+              bankSearchMessage.value = `${keyword} 영업점 ${filteredBanks.length}개를 찾았습니다.`;
+            }, {
+              location,
+              radius: 3000,
+              sort: window.kakao.maps.services.SortBy.DISTANCE,
+            });
+          };
+
+          const searchBankLocation = async () => {
+            bankSearchMessage.value = '';
+            try {
+              await loadKakaoMap();
+            } catch (error) {
+              bankSearchMessage.value = `${error.message} .env에 KAKAO_MAP_APP_KEY를 설정해 주세요.`;
+              return;
+            }
+            const keyword = bankSearchKeyword.value.trim();
+            if (!keyword) {
+              bankSearchMessage.value = '주소 또는 장소를 입력해 주세요.';
+              return;
+            }
+            const geocoder = new window.kakao.maps.services.Geocoder();
+            geocoder.addressSearch(keyword, (result, status) => {
+              if (status === window.kakao.maps.services.Status.OK && result.length) {
+                const lat = Number(result[0].y);
+                const lng = Number(result[0].x);
+                renderBankMap(lat, lng).then(() => searchNearbyBanks(lat, lng));
+                return;
+              }
+              const places = new window.kakao.maps.services.Places();
+              places.keywordSearch(keyword, (data, placeStatus) => {
+                if (placeStatus !== window.kakao.maps.services.Status.OK || !data.length) {
+                  bankSearchMessage.value = '입력한 위치를 찾지 못했습니다.';
+                  return;
+                }
+                const lat = Number(data[0].y);
+                const lng = Number(data[0].x);
+                renderBankMap(lat, lng).then(() => searchNearbyBanks(lat, lng));
+              });
+            });
+          };
+
+          const goToBankSearch = async () => {
+            if (!requireLogin()) return;
+            page.value = 'bankSearch';
+            bankSearchKeyword.value = '';
+            nearbyBanks.value = [];
+            bankSearchMessage.value = '';
+            setTimeout(async () => {
+              try {
+                await renderBankMap();
+                bankSearchMessage.value = '주소 또는 장소를 입력해 주변 은행을 검색해보세요.';
+              } catch (error) {
+                bankSearchMessage.value = `${error.message} .env에 KAKAO_MAP_APP_KEY를 설정해 주세요.`;
+              }
+            }, 0);
+          };
+
+          const moveToBank = (bank) => {
+            if (!bankMap || !window.kakao || !window.kakao.maps) return;
+            const position = new window.kakao.maps.LatLng(bank.y, bank.x);
+            bankMap.setCenter(position);
+            bankMap.setLevel(3);
+            drawRouteToBank(bank);
+          };
+
+          const drawRouteToBank = async (bank) => {
+            clearRoute();
+            routeMessage.value = '멀티캠퍼스 역삼에서 선택한 은행까지 경로를 불러오는 중입니다.';
+            const response = await fetch(`/api/bank-route/?lng=${bank.x}&lat=${bank.y}`);
+            const data = await response.json();
+            if (!response.ok) {
+              routeMessage.value = data.message || '경로를 불러오지 못했습니다.';
+              return;
+            }
+            const path = (data.points || []).map((point) => new window.kakao.maps.LatLng(point.lat, point.lng));
+            if (!path.length) {
+              routeMessage.value = '표시할 경로 좌표가 없습니다.';
+              return;
+            }
+
+            routePolyline = new window.kakao.maps.Polyline({
+              map: bankMap,
+              path,
+              strokeWeight: 6,
+              strokeColor: '#1d5fe9',
+              strokeOpacity: 0.85,
+              strokeStyle: 'solid',
+            });
+            routeStartMarker = new window.kakao.maps.Marker({
+              map: bankMap,
+              position: new window.kakao.maps.LatLng(37.5012743, 127.039585),
+            });
+            const bounds = new window.kakao.maps.LatLngBounds();
+            path.forEach((point) => bounds.extend(point));
+            bounds.extend(new window.kakao.maps.LatLng(bank.y, bank.x));
+            bankMap.setBounds(bounds);
+
+            const km = data.distance ? (data.distance / 1000).toFixed(1) : '-';
+            const min = data.duration ? Math.round(data.duration / 60) : '-';
+            routeMessage.value = `멀티캠퍼스 역삼 → ${bank.place_name}: 약 ${km}km, ${min}분`;
           };
 
           const toggleMission = async (missionId) => {
@@ -843,6 +1092,11 @@
             depositProducts,
             productCompanies,
             selectedDepositProduct,
+            joinMessage,
+            bankSearchKeyword,
+            bankSearchMessage,
+            routeMessage,
+            nearbyBanks,
             productFilters,
             result,
             profileScoreItems,
@@ -860,6 +1114,10 @@
             goToProducts,
             loadDepositProducts,
             openDepositProduct,
+            joinDepositProduct,
+            goToBankSearch,
+            searchBankLocation,
+            moveToBank,
             toggleMission,
           };
         }
