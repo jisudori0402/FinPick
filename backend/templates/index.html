@@ -219,6 +219,9 @@
       .product-card { cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease; }
       .product-card:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08); }
       .product-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; color: #64748b; }
+      .category-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 18px; }
+      .category-tabs button { border: 1px solid #dbe3f0; border-radius: 14px; background: white; color: #334155; cursor: pointer; font-weight: 800; padding: 14px; }
+      .category-tabs button.active { background: #1d5fe9; color: white; border-color: #1d5fe9; }
       .rate { color: #1d5fe9; font-size: 26px; font-weight: 900; margin-top: 12px; }
       .detail-table { width: 100%; border-collapse: collapse; margin-top: 14px; }
       .detail-table th, .detail-table td { padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: left; }
@@ -238,7 +241,7 @@
         .hero-copy h2 { font-size: 30px; }
         nav { gap: 10px; }
         nav button, .pill-link { padding: 12px 18px; font-size: 16px; }
-        .filter-row { grid-template-columns: 1fr; }
+        .filter-row, .category-tabs { grid-template-columns: 1fr; }
       }
     </style>
   </head>
@@ -252,7 +255,7 @@
             <button @click="goHome">홈</button>
             <button @click="goToDiagnosis">금융 진단</button>
             <button @click="goToRoadmap">로드맵</button>
-            <button @click="page='products'">추천 상품</button>
+            <button @click="goToProducts">추천 상품</button>
           </nav>
         </header>
 
@@ -353,13 +356,13 @@
               <section class="summary-card panel">
                 <div class="section-head">
                   <h2>FinPick 추천</h2>
-                  <button class="pill-link" style="box-shadow:none; padding:0; background:transparent; color:#1d5fe9;" @click="page='products'">전체 보기 ›</button>
+                  <button class="pill-link" style="box-shadow:none; padding:0; background:transparent; color:#1d5fe9;" @click="goToProducts">전체 보기 ›</button>
                 </div>
                 <div class="recommend-box">
                   <span class="hot-chip">지금 가장 추천하는 상품 🔥</span>
                   <h3>청년도약계좌</h3>
                   <p>정부 지원으로<br />최대 5천만원 목돈 마련 가능</p>
-                  <button class="detail-btn" @click="page='products'">자세히 보기 →</button>
+                  <button class="detail-btn" @click="goToProducts">자세히 보기 →</button>
                 </div>
               </section>
             </div>
@@ -521,11 +524,17 @@
           </section>
 
           <section v-if="page==='products'" class="card panel">
-            <h2>예적금 상품</h2>
-            <p>저장된 금융상품 목록을 은행, 상품명, 금리, 기간 기준으로 확인해보세요.</p>
+            <h2>추천 상품</h2>
 
-            <div class="filter-row">
-              <input v-model="productFilters.q" placeholder="상품명 검색" @keyup.enter="loadDepositProducts" />
+            <div class="category-tabs">
+              <button :class="{ active: productCategory === 'deposit' }" @click="setProductCategory('deposit')">예적금</button>
+              <button :class="{ active: productCategory === 'card' }" @click="setProductCategory('card')">카드</button>
+              <button :class="{ active: productCategory === 'loan' }" @click="setProductCategory('loan')">대출</button>
+              <button :class="{ active: productCategory === 'investment' }" @click="setProductCategory('investment')">투자</button>
+            </div>
+
+            <div v-if="productCategory === 'deposit'" class="filter-row">
+              <input v-model="productFilters.q" placeholder="상품명 검색" />
               <select v-model="productFilters.company" @change="loadDepositProducts">
                 <option value="">전체 은행</option>
                 <option v-for="company in productCompanies" :key="company" :value="company" v-text="company"></option>
@@ -542,13 +551,11 @@
               </select>
             </div>
 
-            <button class="secondary-btn" style="margin-top:12px;" @click="loadDepositProducts">검색</button>
-
-            <div v-if="!depositProducts.length" class="empty">
-              저장된 예적금 상품이 없습니다. API 동기화를 먼저 실행해 주세요.
+            <div v-if="productCategory === 'deposit' && !displayedDepositProducts.length" class="empty">
+              표시할 예적금 상품이 없습니다.
             </div>
 
-            <div class="product product-card" v-for="item in depositProducts" :key="item.id" @click="openDepositProduct(item.id)">
+            <div v-if="productCategory === 'deposit'" class="product product-card" v-for="item in displayedDepositProducts" :key="item.id" @click="openDepositProduct(item.id)">
               <small v-text="item.product_type === 'deposit' ? '예금' : '적금'"></small>
               <h3 v-text="item.product_name"></h3>
               <p v-text="item.financial_company_name"></p>
@@ -561,43 +568,18 @@
               </div>
             </div>
 
-            <div v-if="selectedDepositProduct" class="result-box">
-              <h3 v-text="selectedDepositProduct.product_name"></h3>
-              <p><strong>은행</strong> <span v-text="selectedDepositProduct.financial_company_name"></span></p>
-              <p><strong>가입 방법</strong> <span v-text="selectedDepositProduct.join_way || '-'"></span></p>
-              <p><strong>가입 대상</strong> <span v-text="selectedDepositProduct.join_member || '-'"></span></p>
-              <p><strong>우대 조건</strong> <span v-text="selectedDepositProduct.special_condition || '-'"></span></p>
-              <p><strong>기타 안내</strong> <span v-text="selectedDepositProduct.etc_note || '-'"></span></p>
-              <table class="detail-table">
-                <thead>
-                  <tr>
-                    <th>기간</th>
-                    <th>금리유형</th>
-                    <th>기본금리</th>
-                    <th>최고금리</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="option in selectedDepositProduct.options" :key="option.saving_term + option.interest_rate_type_name + option.reserve_type_name">
-                    <td v-text="option.saving_term ? option.saving_term + '개월' : '-'"></td>
-                    <td v-text="option.interest_rate_type_name || option.reserve_type_name || '-'"></td>
-                    <td v-text="option.interest_rate ? option.interest_rate + '%' : '-'"></td>
-                    <td v-text="option.max_interest_rate ? option.max_interest_rate + '%' : '-'"></td>
-                  </tr>
-                </tbody>
-              </table>
+            <div v-if="productCategory !== 'deposit' && !filteredRecommendations.length" class="empty">
+              해당 카테고리 상품은 아직 준비 중입니다.
+            </div>
+
+            <div v-if="productCategory !== 'deposit'" class="product product-card" v-for="item in filteredRecommendations" :key="item.name">
+              <small v-text="categoryLabel(productCategory)"></small>
+              <h3 v-text="item.name"></h3>
+              <p v-text="item.product_type"></p>
+              <small v-text="item.reason"></small>
             </div>
           </section>
 
-          <section v-if="false && page==='products'" class="card panel">
-            <h2>맞춤 추천 상품</h2>
-            <div class="product" v-for="item in products" :key="item.name">
-              <h3 v-text="item.name"></h3>
-              <p v-text="item.product_type"></p>
-              <small v-text="item.reason"></small><br />
-              <button>자세히 보기</button>
-            </div>
-          </section>
           <section v-if="page==='productDetail' && selectedDepositProduct" class="card panel">
             <button class="secondary-btn" style="max-width:180px;" @click="page='products'">목록으로</button>
             <h2 v-text="selectedDepositProduct.product_name"></h2>
@@ -682,6 +664,7 @@
             levels: [],
           });
           const products = ref(JSON.parse(document.getElementById('initial-products').textContent || '[]'));
+          const productCategory = ref('deposit');
           const depositProducts = ref([]);
           const productCompanies = ref([]);
           const selectedDepositProduct = ref(null);
@@ -734,6 +717,30 @@
             '투자 성향': '📈',
             '자산 관리': '🏦',
           };
+          const categoryMap = {
+            card: ['card'],
+            loan: ['loan', 'loans'],
+            investment: ['investment', 'invest'],
+          };
+          const categoryLabel = (category) => {
+            return {
+              deposit: '예적금',
+              card: '카드',
+              loan: '대출',
+              investment: '투자',
+            }[category] || '상품';
+          };
+          const filteredRecommendations = computed(() => {
+            const categories = categoryMap[productCategory.value] || [];
+            return products.value.filter((item) => categories.includes(item.category));
+          });
+          const displayedDepositProducts = computed(() => {
+            const keyword = productFilters.value.q.trim().toLowerCase();
+            if (!keyword) return depositProducts.value;
+            return depositProducts.value.filter((item) => {
+              return item.product_name.toLowerCase().includes(keyword);
+            });
+          });
           const profileScoreItems = computed(() => {
             return Object.entries(result.value.profile_scores || {}).map(([label, stars]) => ({
               label,
@@ -822,6 +829,7 @@
             if (!isAuthenticated) return;
             const params = new URLSearchParams();
             Object.entries(productFilters.value).forEach(([key, value]) => {
+              if (key === 'q') return;
               if (value) params.append(key, value);
             });
             const response = await fetch(`/api/deposit-products/?${params.toString()}`);
@@ -833,8 +841,18 @@
 
           const goToProducts = async () => {
             if (!requireLogin()) return;
-            await loadDepositProducts();
+            if (productCategory.value === 'deposit') {
+              await loadDepositProducts();
+            }
             page.value = 'products';
+          };
+
+          const setProductCategory = async (category) => {
+            productCategory.value = category;
+            selectedDepositProduct.value = null;
+            if (category === 'deposit') {
+              await loadDepositProducts();
+            }
           };
 
           const openDepositProduct = async (productId) => {
@@ -1089,6 +1107,7 @@
             options,
             roadmap,
             products,
+            productCategory,
             depositProducts,
             productCompanies,
             selectedDepositProduct,
@@ -1101,6 +1120,9 @@
             result,
             profileScoreItems,
             quotedComment,
+            filteredRecommendations,
+            displayedDepositProducts,
+            categoryLabel,
             dashboardMissions,
             firstPendingIndex,
             nextMissionTitle,
@@ -1112,6 +1134,7 @@
             retakeDiagnosis,
             goToRoadmap,
             goToProducts,
+            setProductCategory,
             loadDepositProducts,
             openDepositProduct,
             joinDepositProduct,
