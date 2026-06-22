@@ -26,6 +26,9 @@ from .models import (
     UserMission,
     UserDepositSubscription,
     UserProfile,
+    CommunityPost,
+    CommunityComment,
+    UserFavoriteDepositProduct,
 )
 
 
@@ -503,6 +506,142 @@ def api_products(request):
     return JsonResponse({'products': products})
 
 
+def serialize_comment(comment, user=None):
+    return {
+        'id': comment.id,
+        'content': comment.content,
+        'author': comment.author.get_full_name() or comment.author.username,
+        'created_at': timezone.localtime(comment.created_at).strftime('%Y-%m-%d %H:%M'),
+        'can_edit': bool(user and user.is_authenticated and comment.author_id == user.id),
+    }
+
+
+def serialize_post(post, user=None, include_comments=False):
+    payload = {
+        'id': post.id,
+        'board': post.board,
+        'board_label': post.get_board_display(),
+        'title': post.title,
+        'content': post.content,
+        'author': post.author.get_full_name() or post.author.username,
+        'created_at': timezone.localtime(post.created_at).strftime('%Y-%m-%d %H:%M'),
+        'comment_count': getattr(post, 'comment_count', post.comments.count()),
+        'can_edit': bool(user and user.is_authenticated and post.author_id == user.id),
+    }
+    if include_comments:
+        payload['comments'] = [
+            serialize_comment(comment, user)
+            for comment in post.comments.select_related('author')
+        ]
+    return payload
+
+
+@csrf_exempt
+@login_required
+def api_community_posts(request):
+    if request.method == 'GET':
+        board = request.GET.get('board', '').strip()
+        posts = CommunityPost.objects.select_related('author').prefetch_related('comments')
+        if board:
+            posts = posts.filter(board=board)
+        return JsonResponse({
+            'posts': [serialize_post(post, request.user) for post in posts],
+            'boards': [{'value': value, 'label': label} for value, label in CommunityPost.BOARD_CHOICES],
+        })
+
+    if request.method == 'POST':
+        title = request.POST.get('title', '').strip()
+        content = request.POST.get('content', '').strip()
+        board = request.POST.get('board', 'free').strip()
+        if board not in dict(CommunityPost.BOARD_CHOICES):
+            board = 'free'
+        if not title or not content:
+            return JsonResponse({'message': '제목과 내용을 입력해 주세요.'}, status=400)
+        post = CommunityPost.objects.create(
+            author=request.user,
+            board=board,
+            title=title,
+            content=content,
+        )
+        return JsonResponse({'post': serialize_post(post, request.user, include_comments=True)}, status=201)
+
+    return JsonResponse({'message': '지원하지 않는 요청입니다.'}, status=405)
+
+
+@csrf_exempt
+@login_required
+def api_community_post_detail(request, post_id):
+    post = CommunityPost.objects.select_related('author').filter(id=post_id).first()
+    if post is None:
+        return JsonResponse({'message': '게시글을 찾을 수 없습니다.'}, status=404)
+
+    if request.method == 'GET':
+        return JsonResponse({'post': serialize_post(post, request.user, include_comments=True)})
+
+    if request.method == 'POST':
+        if post.author_id != request.user.id:
+            return JsonResponse({'message': '본인이 작성한 게시글만 수정할 수 있습니다.'}, status=403)
+        title = request.POST.get('title', '').strip()
+        content = request.POST.get('content', '').strip()
+        board = request.POST.get('board', post.board).strip()
+        if board not in dict(CommunityPost.BOARD_CHOICES):
+            board = post.board
+        if not title or not content:
+            return JsonResponse({'message': '제목과 내용을 입력해 주세요.'}, status=400)
+        post.title = title
+        post.content = content
+        post.board = board
+        post.save(update_fields=['title', 'content', 'board', 'updated_at'])
+        return JsonResponse({'post': serialize_post(post, request.user, include_comments=True)})
+
+    if request.method == 'DELETE':
+        if post.author_id != request.user.id:
+            return JsonResponse({'message': '본인이 작성한 게시글만 삭제할 수 있습니다.'}, status=403)
+        post.delete()
+        return JsonResponse({'message': '게시글을 삭제했습니다.'})
+
+    return JsonResponse({'message': '지원하지 않는 요청입니다.'}, status=405)
+
+
+@csrf_exempt
+@login_required
+def api_community_comments(request, post_id):
+    post = CommunityPost.objects.filter(id=post_id).first()
+    if post is None:
+        return JsonResponse({'message': '게시글을 찾을 수 없습니다.'}, status=404)
+    if request.method != 'POST':
+        return JsonResponse({'message': 'POST 요청만 지원합니다.'}, status=405)
+    content = request.POST.get('content', '').strip()
+    if not content:
+        return JsonResponse({'message': '댓글 내용을 입력해 주세요.'}, status=400)
+    comment = CommunityComment.objects.create(post=post, author=request.user, content=content)
+    return JsonResponse({'comment': serialize_comment(comment, request.user)}, status=201)
+
+
+@csrf_exempt
+@login_required
+def api_community_comment_detail(request, comment_id):
+    comment = CommunityComment.objects.select_related('post', 'author').filter(id=comment_id).first()
+    if comment is None:
+        return JsonResponse({'message': '댓글을 찾을 수 없습니다.'}, status=404)
+    if comment.author_id != request.user.id:
+        return JsonResponse({'message': '본인이 작성한 댓글만 수정/삭제할 수 있습니다.'}, status=403)
+
+    if request.method == 'POST':
+        content = request.POST.get('content', '').strip()
+        if not content:
+            return JsonResponse({'message': '댓글 내용을 입력해 주세요.'}, status=400)
+        comment.content = content
+        comment.save(update_fields=['content', 'updated_at'])
+        return JsonResponse({'comment': serialize_comment(comment, request.user)})
+
+    if request.method == 'DELETE':
+        comment.delete()
+        return JsonResponse({'message': '댓글을 삭제했습니다.'})
+
+    return JsonResponse({'message': '지원하지 않는 요청입니다.'}, status=405)
+
+
 def xlsx_column_index(cell_ref):
     letters = ''.join(char for char in cell_ref if char.isalpha())
     index = 0
@@ -621,10 +760,92 @@ def api_spot_prices(request):
     })
 
 
-def serialize_deposit_product(product):
+def serialize_subscription(subscription):
+    product = subscription.product
     best_option = (
         product.options.order_by('-max_interest_rate', '-interest_rate', 'saving_term')
         .first()
+    )
+    rate = None
+    if best_option:
+        rate = best_option.max_interest_rate or best_option.interest_rate
+    return {
+        'id': subscription.id,
+        'product_id': product.id,
+        'product_name': product.product_name,
+        'financial_company_name': product.financial_company_name,
+        'product_type': product.get_product_type_display(),
+        'best_term': best_option.saving_term if best_option else None,
+        'rate': float(rate) if rate is not None else 0,
+        'rate_label': f'{rate}%' if rate is not None else '-',
+        'created_at': timezone.localtime(subscription.created_at).strftime('%Y-%m-%d'),
+    }
+
+
+@csrf_exempt
+@login_required
+def api_profile(request):
+    profile, _ = UserProfile.objects.get_or_create(user=request.user)
+
+    if request.method == 'POST':
+        name = request.POST.get('name', '').strip()
+        email = request.POST.get('email', '').strip()
+        birth_date_value = request.POST.get('birth_date', '').strip()
+
+        if not name or not email:
+            return JsonResponse({'message': '이름과 이메일을 입력해 주세요.'}, status=400)
+        if User.objects.exclude(id=request.user.id).filter(username=email).exists() or User.objects.exclude(id=request.user.id).filter(email=email).exists():
+            return JsonResponse({'message': '이미 사용 중인 이메일입니다.'}, status=400)
+
+        birth_date = None
+        age = None
+        if birth_date_value:
+            try:
+                birth_date = datetime.strptime(birth_date_value, '%Y-%m-%d').date()
+            except ValueError:
+                return JsonResponse({'message': '생년월일 형식이 올바르지 않습니다.'}, status=400)
+            today = date.today()
+            age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+
+        request.user.first_name = name
+        request.user.email = email
+        request.user.username = email
+        request.user.save(update_fields=['first_name', 'email', 'username'])
+        profile.birth_date = birth_date
+        profile.age = age
+        profile.save(update_fields=['birth_date', 'age'])
+
+    subscriptions = (
+        UserDepositSubscription.objects
+        .filter(user=request.user)
+        .select_related('product')
+        .prefetch_related('product__options')
+    )
+    subscription_list = [serialize_subscription(subscription) for subscription in subscriptions]
+    return JsonResponse({
+        'profile': {
+            'name': request.user.first_name or request.user.get_full_name() or request.user.username,
+            'email': request.user.email,
+            'birth_date': profile.birth_date.isoformat() if profile.birth_date else '',
+            'age': profile.age,
+            'joined_at': timezone.localtime(request.user.date_joined).strftime('%Y-%m-%d'),
+        },
+        'subscriptions': subscription_list,
+        'chart': {
+            'labels': [item['product_name'] for item in subscription_list],
+            'rates': [item['rate'] for item in subscription_list],
+        },
+    })
+
+
+def serialize_deposit_product(product, user=None):
+    best_option = (
+        product.options.order_by('-max_interest_rate', '-interest_rate', 'saving_term')
+        .first()
+    )
+    is_favorite = (
+        bool(user and user.is_authenticated)
+        and UserFavoriteDepositProduct.objects.filter(user=user, product=product).exists()
     )
     return {
         'id': product.id,
@@ -636,6 +857,7 @@ def serialize_deposit_product(product):
         'best_term': best_option.saving_term if best_option else None,
         'interest_rate': str(best_option.interest_rate) if best_option and best_option.interest_rate is not None else None,
         'max_interest_rate': str(best_option.max_interest_rate) if best_option and best_option.max_interest_rate is not None else None,
+        'is_favorite': is_favorite,
     }
 
 
@@ -654,7 +876,7 @@ def api_deposit_products(request):
     if kind in ['deposit', 'saving']:
         products = products.filter(product_type=kind)
 
-    product_list = [serialize_deposit_product(product) for product in products]
+    product_list = [serialize_deposit_product(product, request.user) for product in products]
     if ordering == 'name':
         product_list.sort(key=lambda item: item['product_name'])
     elif ordering == 'company':
@@ -685,7 +907,7 @@ def api_deposit_product_detail(request, product_id):
 
     return JsonResponse({
         'product': {
-            **serialize_deposit_product(product),
+            **serialize_deposit_product(product, request.user),
             'is_subscribed': is_subscribed,
             'product_code': product.product_code,
             'disclosure_month': product.disclosure_month,
@@ -704,6 +926,48 @@ def api_deposit_product_detail(request, product_id):
                 for option in product.options.all()
             ],
         }
+    })
+
+
+@login_required
+def api_favorite_deposit_products(request):
+    favorites = (
+        UserFavoriteDepositProduct.objects
+        .filter(user=request.user)
+        .select_related('product')
+        .prefetch_related('product__options')
+    )
+    return JsonResponse({
+        'products': [
+            serialize_deposit_product(favorite.product, request.user)
+            for favorite in favorites
+        ]
+    })
+
+
+@csrf_exempt
+@login_required
+def api_favorite_deposit_product_toggle(request, product_id):
+    if request.method != 'POST':
+        return JsonResponse({'message': 'POST 요청만 지원합니다.'}, status=405)
+    product = DepositProduct.objects.filter(id=product_id).first()
+    if product is None:
+        return JsonResponse({'message': '상품을 찾을 수 없습니다.'}, status=404)
+
+    favorite = UserFavoriteDepositProduct.objects.filter(user=request.user, product=product).first()
+    if favorite:
+        favorite.delete()
+        is_favorite = False
+        message = '관심상품에서 제거했습니다.'
+    else:
+        UserFavoriteDepositProduct.objects.create(user=request.user, product=product)
+        is_favorite = True
+        message = '관심상품에 추가했습니다.'
+
+    return JsonResponse({
+        'message': message,
+        'is_favorite': is_favorite,
+        'product': serialize_deposit_product(product, request.user),
     })
 
 

@@ -216,8 +216,10 @@
       .lock-note { margin-top: 10px; color: #64748b; font-size: 14px; }
       .filter-row { display: grid; grid-template-columns: 1fr 180px 150px 150px; gap: 10px; margin-top: 18px; }
       .filter-row input, .filter-row select { width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 12px; }
-      .product-card { cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease; }
+      .product-card { cursor: pointer; position: relative; transition: transform 0.15s ease, box-shadow 0.15s ease; }
       .product-card:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08); }
+      .favorite-btn { position: absolute; top: 14px; right: 14px; border: 0; background: #f8fafc; color: #94a3b8; width: 38px; height: 38px; border-radius: 50%; font-size: 22px; cursor: pointer; box-shadow: inset 0 0 0 1px #e5e7eb; }
+      .favorite-btn.active { color: #f59e0b; background: #fff7ed; box-shadow: inset 0 0 0 1px #fed7aa; }
       .product-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; color: #64748b; }
       .category-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 18px; }
       .category-tabs button { border: 1px solid #dbe3f0; border-radius: 14px; background: white; color: #334155; cursor: pointer; font-weight: 800; padding: 14px; }
@@ -246,10 +248,26 @@
       .bank-item { padding: 14px; border: 1px solid #e5e7eb; border-radius: 14px; background: white; cursor: pointer; }
       .bank-item:hover { border-color: #1d5fe9; }
       .bank-item h3 { margin: 0 0 6px; }
+      .community-toolbar { display: flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 18px; }
+      .community-toolbar select { padding: 12px; border: 1px solid #d1d5db; border-radius: 12px; }
+      .post-card { cursor: pointer; }
+      .post-card h3 { margin: 6px 0; }
+      .post-meta { display: flex; gap: 10px; flex-wrap: wrap; color: #64748b; font-size: 14px; }
+      .community-form { display: grid; gap: 12px; margin-top: 18px; }
+      .community-form input, .community-form textarea, .community-form select { width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 12px; font: inherit; }
+      .community-form textarea { min-height: 150px; resize: vertical; }
+      .comment-box { border-top: 1px solid #e5e7eb; margin-top: 18px; padding-top: 18px; }
+      .comment-item { border: 1px solid #e5e7eb; border-radius: 14px; padding: 14px; margin-top: 10px; background: white; }
+      .profile-grid { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 18px; margin-top: 18px; }
+      .profile-card { border: 1px solid #e5e7eb; border-radius: 16px; padding: 18px; background: white; }
+      .profile-form { display: grid; gap: 12px; }
+      .profile-form label { color: #475569; font-size: 13px; font-weight: 800; }
+      .profile-form input { width: 100%; margin-top: 6px; padding: 12px; border: 1px solid #d1d5db; border-radius: 12px; }
+      .chart-box { height: 320px; margin-top: 14px; }
       @media (max-width: 800px) {
         header h1 { font-size: 42px; }
         header p { font-size: 18px; }
-        .landing-hero, .dashboard-hero, .dashboard-grid, .feature-grid, .tip-card { grid-template-columns: 1fr; }
+        .landing-hero, .dashboard-hero, .dashboard-grid, .feature-grid, .tip-card, .profile-grid { grid-template-columns: 1fr; }
         .landing-hero, .dashboard-hero { padding: 34px 24px; }
         .hero-copy h2 { font-size: 30px; }
         nav { gap: 10px; }
@@ -269,6 +287,11 @@
             <button @click="goToDiagnosis">금융 진단</button>
             <button @click="goToRoadmap">로드맵</button>
             <button @click="goToProducts">모든 상품</button>
+            <button @click="goToCommunity">커뮤니티</button>
+            {% if user.is_authenticated %}
+              <button @click="goToProfile">프로필</button>
+              <a class="pill-link" href="/logout/">로그아웃</a>
+            {% endif %}
           </nav>
         </header>
 
@@ -368,14 +391,25 @@
 
               <section class="summary-card panel">
                 <div class="section-head">
-                  <h2>FinPick 추천</h2>
+                  <h2>관심종목</h2>
                   <button class="pill-link" style="box-shadow:none; padding:0; background:transparent; color:#1d5fe9;" @click="goToProducts">전체 보기 ›</button>
                 </div>
-                <div class="recommend-box">
-                  <span class="hot-chip">지금 가장 추천하는 상품 🔥</span>
-                  <h3>청년도약계좌</h3>
-                  <p>정부 지원으로<br />최대 5천만원 목돈 마련 가능</p>
-                  <button class="detail-btn" @click="goToProducts">자세히 보기 →</button>
+                <div v-if="!favoriteProducts.length" class="recommend-box">
+                  <span class="hot-chip">아직 관심상품이 없어요</span>
+                  <h3>상품을 별표로 저장해보세요</h3>
+                  <p>모든 상품에서 마음에 드는 상품을<br />한눈에 모아볼 수 있어요.</p>
+                  <button class="detail-btn" @click="goToProducts">상품 보러가기 →</button>
+                </div>
+                <div v-else class="roadmap-list">
+                  <div class="roadmap-row" v-for="item in dashboardFavorites" :key="item.id" @click="openDepositProduct(item.id)" style="cursor:pointer;">
+                    <div class="step-badge done">★</div>
+                    <div>
+                      <small v-text="item.financial_company_name"></small>
+                      <strong style="display:block; margin-top:6px;" v-text="item.product_name"></strong>
+                      <small v-text="`최고 ${item.max_interest_rate || item.interest_rate || '-'}%`"></small>
+                    </div>
+                    <span>›</span>
+                  </div>
                 </div>
               </section>
             </div>
@@ -569,6 +603,13 @@
             </div>
 
             <div v-if="productCategory === 'deposit'" class="product product-card" v-for="item in displayedDepositProducts" :key="item.id" @click="openDepositProduct(item.id)">
+              <button
+                class="favorite-btn"
+                :class="{ active: item.is_favorite }"
+                @click.stop="toggleFavoriteProduct(item)"
+                :title="item.is_favorite ? '관심상품 해제' : '관심상품 추가'"
+                v-text="item.is_favorite ? '★' : '☆'"
+              ></button>
               <small v-text="item.product_type === 'deposit' ? '예금' : '적금'"></small>
               <h3 v-text="item.product_name"></h3>
               <p v-text="item.financial_company_name"></p>
@@ -613,7 +654,7 @@
                   <strong v-text="spotDateRange"></strong>
                 </div>
               </div>
-              <svg v-if="spotChartPoints" class="spot-chart" viewBox="0 0 720 320" preserveAspectRatio="none">
+              <svg v-if="spotChartPoints" :key="`${spotFilters.asset}-${spotPrices.length}-${spotDateRange}`" class="spot-chart" viewBox="0 0 720 320" preserveAspectRatio="none">
                 <g v-for="tick in spotYAxisTicks" :key="`y-${tick.label}`">
                   <line class="spot-grid" :x1="44" :y1="tick.y" :x2="696" :y2="tick.y"></line>
                   <text class="spot-label" :x="38" :y="tick.y + 4" text-anchor="end" v-text="tick.label"></text>
@@ -690,6 +731,131 @@
             </table>
           </section>
 
+          <section v-if="page==='community'" class="card panel">
+            <h2>커뮤니티</h2>
+            <div class="community-toolbar">
+              <select v-model="communityBoard" @change="loadCommunityPosts">
+                <option value="">전체 게시판</option>
+                <option v-for="board in communityBoards" :key="board.value" :value="board.value" v-text="board.label"></option>
+              </select>
+              <button class="primary-btn" style="max-width:180px; min-height:48px;" @click="startPostCreate">글쓰기</button>
+            </div>
+
+            <div v-if="communityMode === 'form'" class="community-form">
+              <select v-model="postForm.board">
+                <option v-for="board in communityBoards" :key="board.value" :value="board.value" v-text="board.label"></option>
+              </select>
+              <input v-model="postForm.title" placeholder="제목" />
+              <textarea v-model="postForm.content" placeholder="내용"></textarea>
+              <p v-if="communityMessage" class="lock-note" v-text="communityMessage"></p>
+              <div class="button-row">
+                <button class="primary-btn" @click="savePost" v-text="postForm.id ? '수정하기' : '등록하기'"></button>
+                <button class="secondary-btn" @click="cancelPostForm">취소</button>
+              </div>
+            </div>
+
+            <div v-if="communityMode === 'list'">
+              <div v-if="!communityPosts.length" class="empty">게시글이 없습니다.</div>
+              <div class="product post-card" v-for="post in communityPosts" :key="post.id" @click="openPost(post.id)">
+                <small v-text="post.board_label"></small>
+                <h3 v-text="post.title"></h3>
+                <p class="post-meta">
+                  <span v-text="post.author"></span>
+                  <span v-text="post.created_at"></span>
+                  <span v-text="`댓글 ${post.comment_count}`"></span>
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section v-if="page==='communityDetail' && selectedPost" class="card panel">
+            <button class="secondary-btn" style="max-width:180px;" @click="backToCommunity">목록으로</button>
+            <p class="post-meta">
+              <span v-text="selectedPost.board_label"></span>
+              <span v-text="selectedPost.author"></span>
+              <span v-text="selectedPost.created_at"></span>
+            </p>
+            <h2 v-text="selectedPost.title"></h2>
+            <p style="white-space:pre-wrap;" v-text="selectedPost.content"></p>
+            <div v-if="selectedPost.can_edit" class="button-row">
+              <button class="secondary-btn" @click="startPostEdit">수정</button>
+              <button class="secondary-btn" @click="deletePost">삭제</button>
+            </div>
+
+            <div class="comment-box">
+              <h3>댓글</h3>
+              <div class="community-form" style="margin-top:10px;">
+                <textarea v-model="commentForm.content" placeholder="댓글을 입력하세요"></textarea>
+                <p v-if="communityMessage" class="lock-note" v-text="communityMessage"></p>
+                <button class="primary-btn" style="max-width:180px; min-height:48px;" @click="saveComment" v-text="commentForm.id ? '댓글 수정' : '댓글 등록'"></button>
+              </div>
+              <div v-if="!selectedPost.comments.length" class="empty">댓글이 없습니다.</div>
+              <div class="comment-item" v-for="comment in selectedPost.comments" :key="comment.id">
+                <p class="post-meta">
+                  <span v-text="comment.author"></span>
+                  <span v-text="comment.created_at"></span>
+                </p>
+                <p style="white-space:pre-wrap;" v-text="comment.content"></p>
+                <div v-if="comment.can_edit" class="button-row">
+                  <button class="secondary-btn" @click="startCommentEdit(comment)">수정</button>
+                  <button class="secondary-btn" @click="deleteComment(comment.id)">삭제</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section v-if="page==='profile'" class="card panel">
+            <h2>내 정보</h2>
+            <div class="profile-grid">
+              <div class="profile-card">
+                <h3>회원 정보</h3>
+                <div class="profile-form">
+                  <label>
+                    이름
+                    <input v-model="profileForm.name" placeholder="이름" />
+                  </label>
+                  <label>
+                    이메일
+                    <input type="email" v-model="profileForm.email" placeholder="이메일" />
+                  </label>
+                  <label>
+                    생년월일
+                    <input type="date" v-model="profileForm.birth_date" />
+                  </label>
+                  <p class="post-meta">
+                    <span v-text="profile.age ? `나이 ${profile.age}세` : '나이 정보 없음'"></span>
+                    <span v-text="`가입일 ${profile.joined_at || '-'}`"></span>
+                  </p>
+                  <p v-if="profileMessage" class="lock-note" v-text="profileMessage"></p>
+                  <button class="primary-btn" style="min-height:48px;" @click="saveProfile">정보 수정</button>
+                </div>
+              </div>
+
+              <div class="profile-card">
+                <h3>가입 상품 금리 그래프</h3>
+                <div v-if="!profileSubscriptions.length" class="empty">가입한 예적금 상품이 없습니다.</div>
+                <div v-show="profileSubscriptions.length" class="chart-box">
+                  <canvas id="profile-rate-chart"></canvas>
+                </div>
+              </div>
+            </div>
+
+            <div class="profile-card" style="margin-top:18px;">
+              <h3>가입한 금융상품</h3>
+              <div v-if="!profileSubscriptions.length" class="empty">상품 상세에서 가입하기를 누르면 이곳에 표시됩니다.</div>
+              <div class="product" v-for="item in profileSubscriptions" :key="item.id">
+                <small v-text="item.product_type"></small>
+                <h3 v-text="item.product_name"></h3>
+                <p v-text="item.financial_company_name"></p>
+                <p class="post-meta">
+                  <span v-text="`최고 금리 ${item.rate_label}`"></span>
+                  <span v-text="item.best_term ? `${item.best_term}개월` : '기간 정보 없음'"></span>
+                  <span v-text="`가입일 ${item.created_at}`"></span>
+                </p>
+              </div>
+            </div>
+          </section>
+
           <section v-if="page==='bankSearch'" class="card panel">
             <button class="secondary-btn" style="max-width:180px;" @click="page='productDetail'">상품 상세로</button>
             <h2>근처 은행 검색</h2>
@@ -719,6 +885,7 @@
     {{ initial_products|json_script:"initial-products" }}
     {{ latest_result|json_script:"latest-result" }}
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
       const { createApp, computed, onMounted, ref } = Vue;
       createApp({
@@ -738,6 +905,7 @@
           const products = ref(JSON.parse(document.getElementById('initial-products').textContent || '[]'));
           const productCategory = ref('deposit');
           const depositProducts = ref([]);
+          const favoriteProducts = ref([]);
           const productCompanies = ref([]);
           const selectedDepositProduct = ref(null);
           const joinMessage = ref('');
@@ -749,7 +917,44 @@
           let bankInfoWindow = null;
           let routePolyline = null;
           let routeStartMarker = null;
+          let spotRequestSeq = 0;
+          let profileChart = null;
           const routeMessage = ref('');
+          const communityPosts = ref([]);
+          const communityBoards = ref([
+            { value: 'free', label: '자유게시판' },
+            { value: 'review', label: '금융 상품 리뷰' },
+            { value: 'brag', label: '상품 자랑' },
+          ]);
+          const communityBoard = ref('');
+          const communityMode = ref('list');
+          const selectedPost = ref(null);
+          const communityMessage = ref('');
+          const postForm = ref({
+            id: null,
+            board: 'free',
+            title: '',
+            content: '',
+          });
+          const commentForm = ref({
+            id: null,
+            content: '',
+          });
+          const profile = ref({
+            name: '',
+            email: '',
+            birth_date: '',
+            age: null,
+            joined_at: '',
+          });
+          const profileForm = ref({
+            name: '',
+            email: '',
+            birth_date: '',
+          });
+          const profileSubscriptions = ref([]);
+          const profileChartData = ref({ labels: [], rates: [] });
+          const profileMessage = ref('');
           const productFilters = ref({
             q: '',
             company: '',
@@ -762,7 +967,11 @@
             end: '',
           });
           const spotPrices = ref([]);
-          const spotAssetName = ref('금');
+          const spotAssetLabels = {
+            gold: '금(Gold)',
+            silver: '은(Silver)',
+          };
+          const spotAssetName = ref(spotAssetLabels.gold);
           const spotMessage = ref('');
           const latestResult = JSON.parse(document.getElementById('latest-result').textContent || 'null');
           const emptyResult = {
@@ -914,6 +1123,7 @@
           const dashboardProgress = computed(() => {
             return Number.isFinite(roadmap.value.progress) ? roadmap.value.progress : 0;
           });
+          const dashboardFavorites = computed(() => favoriteProducts.value.slice(0, 3));
 
           const goHome = () => {
             page.value = 'home';
@@ -977,22 +1187,50 @@
             selectedDepositProduct.value = null;
           };
 
-          const loadSpotPrices = async () => {
+          const loadFavoriteProducts = async () => {
             if (!isAuthenticated) return;
+            const response = await fetch('/api/favorite-deposit-products/');
+            const data = await response.json();
+            favoriteProducts.value = data.products || [];
+          };
+
+          const syncFavoriteState = (productId, isFavorite) => {
+            depositProducts.value = depositProducts.value.map((product) => {
+              if (product.id !== productId) return product;
+              return { ...product, is_favorite: isFavorite };
+            });
+            if (selectedDepositProduct.value && selectedDepositProduct.value.id === productId) {
+              selectedDepositProduct.value.is_favorite = isFavorite;
+            }
+          };
+
+          const toggleFavoriteProduct = async (item) => {
+            const response = await fetch(`/api/deposit-products/${item.id}/favorite/`, { method: 'POST' });
+            const data = await response.json();
+            if (!response.ok) return;
+            syncFavoriteState(item.id, data.is_favorite);
+            await loadFavoriteProducts();
+          };
+
+          const loadSpotPrices = async (asset = spotFilters.value.asset) => {
+            if (!isAuthenticated) return;
+            const requestId = ++spotRequestSeq;
+            spotFilters.value.asset = asset;
+            spotAssetName.value = spotAssetLabels[asset] || categoryLabel('investment');
             spotMessage.value = '';
             const params = new URLSearchParams();
-            Object.entries(spotFilters.value).forEach(([key, value]) => {
-              if (value) params.append(key, value);
-            });
+            params.append('asset', asset);
+            if (spotFilters.value.start) params.append('start', spotFilters.value.start);
+            if (spotFilters.value.end) params.append('end', spotFilters.value.end);
             const response = await fetch(`/api/spot-prices/?${params.toString()}`);
             const data = await response.json();
+            if (requestId !== spotRequestSeq || asset !== spotFilters.value.asset) return;
             if (!response.ok) {
               spotPrices.value = [];
               spotMessage.value = data.message || '현물 가격 데이터를 불러오지 못했습니다.';
               return;
             }
             spotPrices.value = data.prices || [];
-            spotAssetName.value = data.asset_name || categoryLabel('investment');
             if (!spotPrices.value.length) {
               spotMessage.value = '선택한 기간에 해당하는 데이터가 없습니다.';
             }
@@ -1000,7 +1238,8 @@
 
           const setSpotAsset = async (asset) => {
             spotFilters.value.asset = asset;
-            await loadSpotPrices();
+            spotPrices.value = [];
+            await loadSpotPrices(asset);
           };
 
           const resetSpotPeriod = async () => {
@@ -1029,6 +1268,229 @@
             }
           };
 
+          const loadCommunityPosts = async () => {
+            if (!isAuthenticated) return;
+            const params = new URLSearchParams();
+            if (communityBoard.value) params.append('board', communityBoard.value);
+            const response = await fetch(`/api/community/posts/?${params.toString()}`);
+            const data = await response.json();
+            communityPosts.value = data.posts || [];
+            communityBoards.value = data.boards || communityBoards.value;
+          };
+
+          const goToCommunity = async () => {
+            if (!requireLogin()) return;
+            communityMode.value = 'list';
+            selectedPost.value = null;
+            communityMessage.value = '';
+            await loadCommunityPosts();
+            page.value = 'community';
+          };
+
+          const startPostCreate = () => {
+            communityMode.value = 'form';
+            communityMessage.value = '';
+            postForm.value = { id: null, board: communityBoard.value || 'free', title: '', content: '' };
+          };
+
+          const startPostEdit = () => {
+            if (!selectedPost.value) return;
+            page.value = 'community';
+            communityMode.value = 'form';
+            communityMessage.value = '';
+            postForm.value = {
+              id: selectedPost.value.id,
+              board: selectedPost.value.board,
+              title: selectedPost.value.title,
+              content: selectedPost.value.content,
+            };
+          };
+
+          const cancelPostForm = () => {
+            communityMode.value = 'list';
+            communityMessage.value = '';
+          };
+
+          const savePost = async () => {
+            communityMessage.value = '';
+            const params = new URLSearchParams();
+            Object.entries(postForm.value).forEach(([key, value]) => {
+              if (key !== 'id') params.append(key, value || '');
+            });
+            const url = postForm.value.id ? `/api/community/posts/${postForm.value.id}/` : '/api/community/posts/';
+            const response = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: params,
+            });
+            const data = await response.json();
+            if (!response.ok) {
+              communityMessage.value = data.message || '게시글 저장에 실패했습니다.';
+              return;
+            }
+            selectedPost.value = data.post;
+            communityMode.value = 'list';
+            page.value = 'communityDetail';
+            await loadCommunityPosts();
+          };
+
+          const openPost = async (postId) => {
+            communityMessage.value = '';
+            const response = await fetch(`/api/community/posts/${postId}/`);
+            const data = await response.json();
+            if (!response.ok) {
+              communityMessage.value = data.message || '게시글을 불러오지 못했습니다.';
+              return;
+            }
+            selectedPost.value = data.post;
+            commentForm.value = { id: null, content: '' };
+            page.value = 'communityDetail';
+          };
+
+          const backToCommunity = async () => {
+            await loadCommunityPosts();
+            page.value = 'community';
+            communityMode.value = 'list';
+          };
+
+          const deletePost = async () => {
+            if (!selectedPost.value || !window.confirm('게시글을 삭제할까요?')) return;
+            const response = await fetch(`/api/community/posts/${selectedPost.value.id}/`, { method: 'DELETE' });
+            const data = await response.json();
+            if (!response.ok) {
+              communityMessage.value = data.message || '게시글 삭제에 실패했습니다.';
+              return;
+            }
+            selectedPost.value = null;
+            await goToCommunity();
+          };
+
+          const saveComment = async () => {
+            if (!selectedPost.value) return;
+            communityMessage.value = '';
+            const params = new URLSearchParams();
+            params.append('content', commentForm.value.content || '');
+            const url = commentForm.value.id
+              ? `/api/community/comments/${commentForm.value.id}/`
+              : `/api/community/posts/${selectedPost.value.id}/comments/`;
+            const response = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: params,
+            });
+            const data = await response.json();
+            if (!response.ok) {
+              communityMessage.value = data.message || '댓글 저장에 실패했습니다.';
+              return;
+            }
+            await openPost(selectedPost.value.id);
+          };
+
+          const startCommentEdit = (comment) => {
+            communityMessage.value = '';
+            commentForm.value = {
+              id: comment.id,
+              content: comment.content,
+            };
+          };
+
+          const deleteComment = async (commentId) => {
+            if (!window.confirm('댓글을 삭제할까요?')) return;
+            const response = await fetch(`/api/community/comments/${commentId}/`, { method: 'DELETE' });
+            const data = await response.json();
+            if (!response.ok) {
+              communityMessage.value = data.message || '댓글 삭제에 실패했습니다.';
+              return;
+            }
+            await openPost(selectedPost.value.id);
+          };
+
+          const renderProfileChart = () => {
+            setTimeout(() => {
+              const canvas = document.getElementById('profile-rate-chart');
+              if (!canvas || !window.Chart || !profileChartData.value.labels.length) return;
+              if (profileChart) {
+                profileChart.destroy();
+              }
+              profileChart = new window.Chart(canvas, {
+                type: 'bar',
+                data: {
+                  labels: profileChartData.value.labels,
+                  datasets: [{
+                    label: '최고 금리(%)',
+                    data: profileChartData.value.rates,
+                    backgroundColor: '#1d5fe9',
+                    borderRadius: 8,
+                  }],
+                },
+                options: {
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: { display: false },
+                  },
+                  scales: {
+                    y: {
+                      beginAtZero: true,
+                      title: { display: true, text: '금리(%)' },
+                    },
+                    x: {
+                      ticks: { maxRotation: 0, autoSkip: false },
+                    },
+                  },
+                },
+              });
+            }, 0);
+          };
+
+          const applyProfileData = (data) => {
+            profile.value = data.profile || profile.value;
+            profileForm.value = {
+              name: profile.value.name || '',
+              email: profile.value.email || '',
+              birth_date: profile.value.birth_date || '',
+            };
+            profileSubscriptions.value = data.subscriptions || [];
+            profileChartData.value = data.chart || { labels: [], rates: [] };
+            renderProfileChart();
+          };
+
+          const loadProfile = async () => {
+            if (!isAuthenticated) return;
+            profileMessage.value = '';
+            const response = await fetch('/api/profile/');
+            const data = await response.json();
+            if (!response.ok) {
+              profileMessage.value = data.message || '프로필을 불러오지 못했습니다.';
+              return;
+            }
+            applyProfileData(data);
+          };
+
+          const goToProfile = async () => {
+            if (!requireLogin()) return;
+            page.value = 'profile';
+            await loadProfile();
+          };
+
+          const saveProfile = async () => {
+            profileMessage.value = '';
+            const params = new URLSearchParams();
+            Object.entries(profileForm.value).forEach(([key, value]) => params.append(key, value || ''));
+            const response = await fetch('/api/profile/', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: params,
+            });
+            const data = await response.json();
+            if (!response.ok) {
+              profileMessage.value = data.message || '프로필 수정에 실패했습니다.';
+              return;
+            }
+            applyProfileData(data);
+            profileMessage.value = '프로필이 수정되었습니다.';
+          };
+
           const openDepositProduct = async (productId) => {
             const response = await fetch(`/api/deposit-products/${productId}/`);
             const data = await response.json();
@@ -1045,6 +1507,7 @@
             joinMessage.value = data.message || '';
             if (response.ok && selectedDepositProduct.value) {
               selectedDepositProduct.value.is_subscribed = true;
+              await loadProfile();
             }
           };
 
@@ -1272,6 +1735,7 @@
           onMounted(async () => {
             await loadRoadmap();
             await loadDepositProducts();
+            await loadFavoriteProducts();
           });
 
           return {
@@ -1283,6 +1747,7 @@
             products,
             productCategory,
             depositProducts,
+            favoriteProducts,
             productCompanies,
             selectedDepositProduct,
             joinMessage,
@@ -1290,6 +1755,18 @@
             bankSearchMessage,
             routeMessage,
             nearbyBanks,
+            communityPosts,
+            communityBoards,
+            communityBoard,
+            communityMode,
+            selectedPost,
+            communityMessage,
+            postForm,
+            commentForm,
+            profile,
+            profileForm,
+            profileSubscriptions,
+            profileMessage,
             productFilters,
             spotFilters,
             spotPrices,
@@ -1312,17 +1789,35 @@
             nextMissionTitle,
             dashboardRoadmapLevel,
             dashboardProgress,
+            dashboardFavorites,
             submitDiagnosis,
             goHome,
             goToDiagnosis,
             retakeDiagnosis,
             goToRoadmap,
             goToProducts,
+            goToCommunity,
             setProductCategory,
             setSpotAsset,
             resetSpotPeriod,
             loadSpotPrices,
             loadDepositProducts,
+            loadFavoriteProducts,
+            toggleFavoriteProduct,
+            loadCommunityPosts,
+            startPostCreate,
+            startPostEdit,
+            cancelPostForm,
+            savePost,
+            openPost,
+            backToCommunity,
+            deletePost,
+            saveComment,
+            startCommentEdit,
+            deleteComment,
+            goToProfile,
+            saveProfile,
+            loadProfile,
             openDepositProduct,
             joinDepositProduct,
             goToBankSearch,

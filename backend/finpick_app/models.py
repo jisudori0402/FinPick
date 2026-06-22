@@ -176,3 +176,51 @@ class UserDepositSubscription(models.Model):
 
     def __str__(self):
         return f'{self.user} - {self.product}'
+
+
+class UserFavoriteDepositProduct(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='favorite_deposit_products')
+    product = models.ForeignKey(DepositProduct, on_delete=models.CASCADE, related_name='favorited_by')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        unique_together = ('user', 'product')
+
+    def __str__(self):
+        return f'{self.user} - {self.product}'
+
+
+class CommunityPost(models.Model):
+    BOARD_CHOICES = [
+        ('free', '자유게시판'),
+        ('review', '금융 상품 리뷰'),
+        ('brag', '상품 자랑'),
+    ]
+
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='community_posts')
+    board = models.CharField(max_length=20, choices=BOARD_CHOICES, default='free')
+    title = models.CharField(max_length=200)
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.title
+
+
+class CommunityComment(models.Model):
+    post = models.ForeignKey(CommunityPost, on_delete=models.CASCADE, related_name='comments')
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='community_comments')
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f'{self.author} - {self.post}'
