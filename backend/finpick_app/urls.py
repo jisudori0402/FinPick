@@ -11,4 +11,6 @@ urlpatterns = [
     path('api/roadmap/', views.api_roadmap, name='api_roadmap'),
     path('api/missions/<int:mission_id>/toggle/', views.api_user_mission, name='api_user_mission'),
     path('api/products/', views.api_products, name='api_products'),
+    path('api/deposit-products/', views.api_deposit_products, name='api_deposit_products'),
+    path('api/deposit-products/<int:product_id>/', views.api_deposit_product_detail, name='api_deposit_product_detail'),
 ]

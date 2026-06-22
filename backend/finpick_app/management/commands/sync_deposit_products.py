@@ -2,6 +2,7 @@ import os
 from decimal import Decimal, InvalidOperation
 
 import requests
+from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from dotenv import load_dotenv
 
@@ -30,9 +31,16 @@ class Command(BaseCommand):
             default='020000',
             help='권역 코드입니다. 기본값 020000은 은행입니다.',
         )
+        parser.add_argument(
+            '--timeout',
+            type=int,
+            default=60,
+            help='API 요청 대기 시간(초)입니다. 기본값은 60초입니다.',
+        )
 
     def handle(self, *args, **options):
-        load_dotenv()
+        load_dotenv(settings.BASE_DIR / '.env')
+        load_dotenv(settings.BASE_DIR.parent / '.env')
         api_key = os.getenv('FINLIFE_API_KEY')
         if not api_key:
             raise CommandError('backend/.env에 FINLIFE_API_KEY 값을 설정해 주세요.')
@@ -41,7 +49,7 @@ class Command(BaseCommand):
         totals = {'products_created': 0, 'products_updated': 0, 'options_created': 0, 'options_updated': 0}
 
         for kind in kinds:
-            result = self.sync_kind(kind, api_key, options['top_fin_grp_no'])
+            result = self.sync_kind(kind, api_key, options['top_fin_grp_no'], options['timeout'])
             for key, value in result.items():
                 totals[key] += value
 
@@ -53,14 +61,14 @@ class Command(BaseCommand):
             f"옵션 갱신 {totals['options_updated']}개"
         ))
 
-    def sync_kind(self, kind, api_key, top_fin_grp_no):
+    def sync_kind(self, kind, api_key, top_fin_grp_no, timeout):
         endpoint = PRODUCT_APIS[kind]
         page_no = 1
         max_page_no = 1
         counts = {'products_created': 0, 'products_updated': 0, 'options_created': 0, 'options_updated': 0}
 
         while page_no <= max_page_no:
-            data = self.fetch_page(endpoint, api_key, top_fin_grp_no, page_no)
+            data = self.fetch_page(endpoint, api_key, top_fin_grp_no, page_no, timeout)
             result = data.get('result', {})
             max_page_no = int(result.get('max_page_no') or 1)
 
@@ -88,17 +96,20 @@ class Command(BaseCommand):
 
         return counts
 
-    def fetch_page(self, endpoint, api_key, top_fin_grp_no, page_no):
-        response = requests.get(
-            f'{FINLIFE_BASE_URL}/{endpoint}',
-            params={
-                'auth': api_key,
-                'topFinGrpNo': top_fin_grp_no,
-                'pageNo': page_no,
-            },
-            timeout=15,
-        )
-        response.raise_for_status()
+    def fetch_page(self, endpoint, api_key, top_fin_grp_no, page_no, timeout):
+        try:
+            response = requests.get(
+                f'{FINLIFE_BASE_URL}/{endpoint}',
+                params={
+                    'auth': api_key,
+                    'topFinGrpNo': top_fin_grp_no,
+                    'pageNo': page_no,
+                },
+                timeout=timeout,
+            )
+            response.raise_for_status()
+        except requests.RequestException as exc:
+            raise CommandError(f'API 요청 실패: {exc}') from exc
         data = response.json()
         result = data.get('result', {})
         if result.get('err_cd') not in (None, '000'):

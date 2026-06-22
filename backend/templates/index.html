@@ -214,6 +214,15 @@
       .mission.done span { text-decoration: line-through; color: #6b7280; }
       .mission.locked { cursor: not-allowed; opacity: 0.75; }
       .lock-note { margin-top: 10px; color: #64748b; font-size: 14px; }
+      .filter-row { display: grid; grid-template-columns: 1fr 180px 150px 150px; gap: 10px; margin-top: 18px; }
+      .filter-row input, .filter-row select { width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 12px; }
+      .product-card { cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease; }
+      .product-card:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08); }
+      .product-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; color: #64748b; }
+      .rate { color: #1d5fe9; font-size: 26px; font-weight: 900; margin-top: 12px; }
+      .detail-table { width: 100%; border-collapse: collapse; margin-top: 14px; }
+      .detail-table th, .detail-table td { padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: left; }
+      .empty { padding: 28px; text-align: center; color: #64748b; }
       @media (max-width: 800px) {
         header h1 { font-size: 42px; }
         header p { font-size: 18px; }
@@ -222,6 +231,7 @@
         .hero-copy h2 { font-size: 30px; }
         nav { gap: 10px; }
         nav button, .pill-link { padding: 12px 18px; font-size: 16px; }
+        .filter-row { grid-template-columns: 1fr; }
       }
     </style>
   </head>
@@ -504,6 +514,75 @@
           </section>
 
           <section v-if="page==='products'" class="card panel">
+            <h2>예적금 상품</h2>
+            <p>저장된 금융상품 목록을 은행, 상품명, 금리, 기간 기준으로 확인해보세요.</p>
+
+            <div class="filter-row">
+              <input v-model="productFilters.q" placeholder="상품명 검색" @keyup.enter="loadDepositProducts" />
+              <select v-model="productFilters.company" @change="loadDepositProducts">
+                <option value="">전체 은행</option>
+                <option v-for="company in productCompanies" :key="company" :value="company" v-text="company"></option>
+              </select>
+              <select v-model="productFilters.kind" @change="loadDepositProducts">
+                <option value="">예금+적금</option>
+                <option value="deposit">예금</option>
+                <option value="saving">적금</option>
+              </select>
+              <select v-model="productFilters.ordering" @change="loadDepositProducts">
+                <option value="rate">금리 높은순</option>
+                <option value="company">은행순</option>
+                <option value="name">상품명순</option>
+              </select>
+            </div>
+
+            <button class="secondary-btn" style="margin-top:12px;" @click="loadDepositProducts">검색</button>
+
+            <div v-if="!depositProducts.length" class="empty">
+              저장된 예적금 상품이 없습니다. API 동기화를 먼저 실행해 주세요.
+            </div>
+
+            <div class="product product-card" v-for="item in depositProducts" :key="item.id" @click="openDepositProduct(item.id)">
+              <small v-text="item.product_type === 'deposit' ? '예금' : '적금'"></small>
+              <h3 v-text="item.product_name"></h3>
+              <p v-text="item.financial_company_name"></p>
+              <div class="rate">
+                최고 <span v-text="(item.max_interest_rate || item.interest_rate || '-') + '%'"></span>
+              </div>
+              <div class="product-meta">
+                <span v-text="item.best_term ? item.best_term + '개월' : '기간 정보 없음'"></span>
+                <span v-text="item.join_way || '가입 방법 정보 없음'"></span>
+              </div>
+            </div>
+
+            <div v-if="selectedDepositProduct" class="result-box">
+              <h3 v-text="selectedDepositProduct.product_name"></h3>
+              <p><strong>은행</strong> <span v-text="selectedDepositProduct.financial_company_name"></span></p>
+              <p><strong>가입 방법</strong> <span v-text="selectedDepositProduct.join_way || '-'"></span></p>
+              <p><strong>가입 대상</strong> <span v-text="selectedDepositProduct.join_member || '-'"></span></p>
+              <p><strong>우대 조건</strong> <span v-text="selectedDepositProduct.special_condition || '-'"></span></p>
+              <p><strong>기타 안내</strong> <span v-text="selectedDepositProduct.etc_note || '-'"></span></p>
+              <table class="detail-table">
+                <thead>
+                  <tr>
+                    <th>기간</th>
+                    <th>금리유형</th>
+                    <th>기본금리</th>
+                    <th>최고금리</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="option in selectedDepositProduct.options" :key="option.saving_term + option.interest_rate_type_name + option.reserve_type_name">
+                    <td v-text="option.saving_term ? option.saving_term + '개월' : '-'"></td>
+                    <td v-text="option.interest_rate_type_name || option.reserve_type_name || '-'"></td>
+                    <td v-text="option.interest_rate ? option.interest_rate + '%' : '-'"></td>
+                    <td v-text="option.max_interest_rate ? option.max_interest_rate + '%' : '-'"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section v-if="false && page==='products'" class="card panel">
             <h2>맞춤 추천 상품</h2>
             <div class="product" v-for="item in products" :key="item.name">
               <h3 v-text="item.name"></h3>
@@ -511,6 +590,33 @@
               <small v-text="item.reason"></small><br />
               <button>자세히 보기</button>
             </div>
+          </section>
+          <section v-if="page==='productDetail' && selectedDepositProduct" class="card panel">
+            <button class="secondary-btn" style="max-width:180px;" @click="page='products'">목록으로</button>
+            <h2 v-text="selectedDepositProduct.product_name"></h2>
+            <p><strong>은행</strong> <span v-text="selectedDepositProduct.financial_company_name"></span></p>
+            <p><strong>가입 방법</strong> <span v-text="selectedDepositProduct.join_way || '-'"></span></p>
+            <p><strong>가입 대상</strong> <span v-text="selectedDepositProduct.join_member || '-'"></span></p>
+            <p><strong>우대 조건</strong> <span v-text="selectedDepositProduct.special_condition || '-'"></span></p>
+            <p><strong>기타 안내</strong> <span v-text="selectedDepositProduct.etc_note || '-'"></span></p>
+            <table class="detail-table">
+              <thead>
+                <tr>
+                  <th>기간</th>
+                  <th>금리유형</th>
+                  <th>기본금리</th>
+                  <th>최고금리</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="option in selectedDepositProduct.options" :key="option.saving_term + option.interest_rate_type_name + option.reserve_type_name">
+                  <td v-text="option.saving_term ? option.saving_term + '개월' : '-'"></td>
+                  <td v-text="option.interest_rate_type_name || option.reserve_type_name || '-'"></td>
+                  <td v-text="option.interest_rate ? option.interest_rate + '%' : '-'"></td>
+                  <td v-text="option.max_interest_rate ? option.max_interest_rate + '%' : '-'"></td>
+                </tr>
+              </tbody>
+            </table>
           </section>
         {% endif %}
       </div>
@@ -535,6 +641,15 @@
             levels: [],
           });
           const products = ref(JSON.parse(document.getElementById('initial-products').textContent || '[]'));
+          const depositProducts = ref([]);
+          const productCompanies = ref([]);
+          const selectedDepositProduct = ref(null);
+          const productFilters = ref({
+            q: '',
+            company: '',
+            kind: '',
+            ordering: 'rate',
+          });
           const latestResult = JSON.parse(document.getElementById('latest-result').textContent || 'null');
           const emptyResult = {
             financial_type: '',
@@ -652,6 +767,34 @@
             page.value = 'roadmap';
           };
 
+          const loadDepositProducts = async () => {
+            if (!isAuthenticated) return;
+            const params = new URLSearchParams();
+            Object.entries(productFilters.value).forEach(([key, value]) => {
+              if (value) params.append(key, value);
+            });
+            const response = await fetch(`/api/deposit-products/?${params.toString()}`);
+            const data = await response.json();
+            depositProducts.value = data.products || [];
+            productCompanies.value = data.companies || productCompanies.value;
+            selectedDepositProduct.value = null;
+          };
+
+          const goToProducts = async () => {
+            if (!requireLogin()) return;
+            await loadDepositProducts();
+            page.value = 'products';
+          };
+
+          const openDepositProduct = async (productId) => {
+            const response = await fetch(`/api/deposit-products/${productId}/`);
+            const data = await response.json();
+            if (response.ok) {
+              selectedDepositProduct.value = data.product;
+              page.value = 'productDetail';
+            }
+          };
+
           const toggleMission = async (missionId) => {
             const response = await fetch(`/api/missions/${missionId}/toggle/`, { method: 'POST' });
             const data = await response.json();
@@ -685,7 +828,10 @@
             await loadRoadmap();
           };
 
-          onMounted(loadRoadmap);
+          onMounted(async () => {
+            await loadRoadmap();
+            await loadDepositProducts();
+          });
 
           return {
             page,
@@ -694,6 +840,10 @@
             options,
             roadmap,
             products,
+            depositProducts,
+            productCompanies,
+            selectedDepositProduct,
+            productFilters,
             result,
             profileScoreItems,
             quotedComment,
@@ -707,6 +857,9 @@
             goToDiagnosis,
             retakeDiagnosis,
             goToRoadmap,
+            goToProducts,
+            loadDepositProducts,
+            openDepositProduct,
             toggleMission,
           };
         }

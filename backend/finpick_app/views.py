@@ -10,6 +10,7 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
 from .models import (
+    DepositProduct,
     DiagnosisResult,
     ProductRecommendation,
     RoadmapMission,
@@ -478,3 +479,84 @@ def api_user_mission(request, mission_id):
 def api_products(request):
     products = list(ProductRecommendation.objects.values('name', 'product_type', 'reason', 'category'))
     return JsonResponse({'products': products})
+
+
+def serialize_deposit_product(product):
+    best_option = (
+        product.options.order_by('-max_interest_rate', '-interest_rate', 'saving_term')
+        .first()
+    )
+    return {
+        'id': product.id,
+        'product_type': product.product_type,
+        'financial_company_name': product.financial_company_name,
+        'product_name': product.product_name,
+        'join_way': product.join_way,
+        'max_limit': product.max_limit,
+        'best_term': best_option.saving_term if best_option else None,
+        'interest_rate': str(best_option.interest_rate) if best_option and best_option.interest_rate is not None else None,
+        'max_interest_rate': str(best_option.max_interest_rate) if best_option and best_option.max_interest_rate is not None else None,
+    }
+
+
+def api_deposit_products(request):
+    products = DepositProduct.objects.prefetch_related('options').all()
+
+    company = request.GET.get('company', '').strip()
+    keyword = request.GET.get('q', '').strip()
+    kind = request.GET.get('kind', '').strip()
+    ordering = request.GET.get('ordering', 'rate').strip()
+
+    if company:
+        products = products.filter(financial_company_name=company)
+    if keyword:
+        products = products.filter(product_name__icontains=keyword)
+    if kind in ['deposit', 'saving']:
+        products = products.filter(product_type=kind)
+
+    product_list = [serialize_deposit_product(product) for product in products]
+    if ordering == 'name':
+        product_list.sort(key=lambda item: item['product_name'])
+    elif ordering == 'company':
+        product_list.sort(key=lambda item: (item['financial_company_name'], item['product_name']))
+    else:
+        product_list.sort(
+            key=lambda item: float(item['max_interest_rate'] or item['interest_rate'] or 0),
+            reverse=True,
+        )
+
+    companies = list(
+        DepositProduct.objects
+        .order_by('financial_company_name')
+        .values_list('financial_company_name', flat=True)
+        .distinct()
+    )
+    return JsonResponse({'products': product_list, 'companies': companies})
+
+
+def api_deposit_product_detail(request, product_id):
+    product = DepositProduct.objects.prefetch_related('options').filter(id=product_id).first()
+    if product is None:
+        return JsonResponse({'message': '상품을 찾을 수 없습니다.'}, status=404)
+
+    return JsonResponse({
+        'product': {
+            **serialize_deposit_product(product),
+            'product_code': product.product_code,
+            'disclosure_month': product.disclosure_month,
+            'maturity_interest': product.maturity_interest,
+            'special_condition': product.special_condition,
+            'join_member': product.join_member,
+            'etc_note': product.etc_note,
+            'options': [
+                {
+                    'saving_term': option.saving_term,
+                    'interest_rate_type_name': option.interest_rate_type_name,
+                    'reserve_type_name': option.reserve_type_name,
+                    'interest_rate': str(option.interest_rate) if option.interest_rate is not None else None,
+                    'max_interest_rate': str(option.max_interest_rate) if option.max_interest_rate is not None else None,
+                }
+                for option in product.options.all()
+            ],
+        }
+    })
