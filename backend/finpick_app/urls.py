@@ -9,5 +9,6 @@ urlpatterns = [
     path('dashboard/', views.dashboard_view, name='dashboard'),
     path('api/diagnosis/', views.api_diagnosis, name='api_diagnosis'),
     path('api/roadmap/', views.api_roadmap, name='api_roadmap'),
+    path('api/missions/<int:mission_id>/toggle/', views.api_user_mission, name='api_user_mission'),
     path('api/products/', views.api_products, name='api_products'),
 ]

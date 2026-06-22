@@ -7,44 +7,43 @@
     <style>
       * { box-sizing: border-box; }
       body { margin: 0; background: #f4f7fb; font-family: Arial, sans-serif; color: #111827; }
-      .wrap { max-width: 760px; margin: 0 auto; padding: 30px; }
+      .wrap { max-width: 640px; margin: 0 auto; padding: 30px; }
       .card { background: white; border-radius: 24px; padding: 28px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
       h1 { color: #2563eb; margin-bottom: 8px; }
-      .msg { padding: 10px 12px; border-radius: 12px; background: #fee2e2; color: #b91c1c; margin-bottom: 12px; }
-      .ok { background: #ecfdf5; color: #047857; }
       label { display: block; margin-top: 12px; font-weight: 700; }
-      input, select { width: 100%; padding: 12px; margin-top: 6px; border-radius: 12px; border: 1px solid #d1d5db; }
+      input { width: 100%; padding: 12px; margin-top: 6px; border-radius: 12px; border: 1px solid #d1d5db; }
       .btn { margin-top: 18px; width: 100%; padding: 14px; border: none; border-radius: 14px; background:#2563eb; color:white; cursor:pointer; font-size:16px; }
       a { color: #2563eb; text-decoration: none; }
       .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      @media (max-width: 560px) {
+        .row { grid-template-columns: 1fr; }
+      }
     </style>
   </head>
   <body>
     <div class="wrap">
       <div class="card">
         <h1>FinPick 회원가입</h1>
-        <p>기본 정보만 입력하면 금융 진단을 시작할 수 있습니다.</p>
 
         <form method="post">
           {% csrf_token %}
-          <div class="row">
-            <div>
-              <label>아이디</label>
-              <input name="username" required />
-            </div>
-            <div>
-              <label>이메일</label>
-              <input type="email" name="email" required />
-            </div>
-          </div>
+          <label>이메일</label>
+          <input type="email" name="email" autocomplete="email" required />
+
+          <label>이름</label>
+          <input name="name" autocomplete="name" required />
+
+          <label>생년월일</label>
+          <input type="date" name="birth_date" required />
+
           <div class="row">
             <div>
               <label>비밀번호</label>
-              <input type="password" name="password1" required />
+              <input type="password" name="password1" autocomplete="new-password" required />
             </div>
             <div>
               <label>비밀번호 확인</label>
-              <input type="password" name="password2" required />
+              <input type="password" name="password2" autocomplete="new-password" required />
             </div>
           </div>
           <button class="btn" type="submit">회원가입 완료</button>
