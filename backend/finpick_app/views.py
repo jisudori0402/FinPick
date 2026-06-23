@@ -2,8 +2,11 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from functools import lru_cache
 from pathlib import Path
+from urllib.parse import unquote
 from zipfile import ZipFile
 import xml.etree.ElementTree as ET
+import json
+from django.contrib.auth import get_user_model
 
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
@@ -15,6 +18,7 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 import requests
+from django.contrib.auth import authenticate, login
 
 from .models import (
     DepositProduct,
@@ -74,46 +78,85 @@ TYPE_CONTENT = {
 
 ROADMAP_TEMPLATES = {
     '🐢 안정형 저축러': [
-        ('Lv.1 금융 기초', '현재 재무 상태 파악 및 금융 목표 설정', ['월 고정지출 확인하기', '비상금 목표 설정하기', '소비 패턴 분석하기']),
-        ('Lv.2 금융 습관', '저축 및 소비 습관 형성', ['월급의 20% 자동저축 설정하기', '적금 가입하기', '비상금 300만원 달성하기']),
-        ('Lv.3 자산 성장', '금융상품 활용 및 자산 증식', ['주택청약 가입 여부 확인하기', 'CMA 계좌 활용하기', '예금 상품 비교하기']),
+        ('Lv.1 금융 진단', '현재 재무상태를 파악합니다.', ['월 고정지출 확인하기', '최근 3개월 소비 분석하기', '금융 목표 설정하기']),
+        ('Lv.2 금융 기초', '저축과 소비의 기본 습관을 만듭니다.', ['비상금 목표 설정하기', '월급의 20% 자동저축 설정하기', '소비 예산 작성하기']),
+        ('Lv.3 목돈 준비', '안정적인 목돈 형성을 시작합니다.', ['적금 상품 가입하기', '비상금 300만원 달성하기', '생활비 통장 분리하기']),
+        ('Lv.4 자산 성장', '금융상품을 활용해 자산을 키웁니다.', ['CMA 계좌 개설하기', '예금 상품 비교하기', '주택청약 가입 여부 확인하기']),
+        ('Lv.5 금융 완성', '장기 자산 관리 체계를 만듭니다.', ['연간 자산 점검하기', 'ISA 계좌 알아보기', '자산 포트폴리오 구성하기']),
     ],
     '🐿 계획형 목돈러': [
-        ('Lv.1 금융 기초', '현재 재무 상태 파악 및 금융 목표 설정', ['목표 금액 설정하기', '월 저축 가능 금액 계산하기', '소비 패턴 분석하기']),
-        ('Lv.2 금융 습관', '저축 및 소비 습관 형성', ['월급의 20% 자동저축 설정하기', '목적별 통장 분리하기', '적금 상품 비교하기']),
-        ('Lv.3 자산 성장', '금융상품 활용 및 자산 증식', ['청년도약계좌 알아보기', '주택청약 가입 여부 확인하기', 'ISA 계좌 알아보기']),
+        ('Lv.1 금융 진단', '목표 자금 마련을 위한 현재 상태를 점검합니다.', ['목표 금액 설정하기', '목표 달성 기간 설정하기', '월 저축 가능 금액 계산하기']),
+        ('Lv.2 금융 기초', '목표 달성을 방해하는 소비 흐름을 정리합니다.', ['소비 패턴 분석하기', '고정지출 줄이기', '월 예산 계획 세우기']),
+        ('Lv.3 목돈 준비', '목적별 저축 구조를 만듭니다.', ['월급의 20% 자동저축 설정하기', '목적별 통장 만들기', '적금 상품 가입하기']),
+        ('Lv.4 자산 성장', '목돈 마련에 맞는 금융상품을 활용합니다.', ['청년도약계좌 알아보기', 'ISA 계좌 알아보기', '주택청약 가입 여부 확인하기']),
+        ('Lv.5 금융 완성', '목표 달성 이후의 장기 계획을 세웁니다.', ['목표 달성률 점검하기', '투자 공부 시작하기', '장기 재무계획 세우기']),
     ],
     '🦊 똑똑한 소비러': [
-        ('Lv.1 금융 기초', '현재 재무 상태 파악 및 금융 목표 설정', ['월 소비 내역 확인하기', '고정지출 확인하기', '소비 카테고리 분석하기']),
-        ('Lv.2 금융 습관', '저축 및 소비 습관 형성', ['소비 예산 설정하기', '카드 혜택 비교하기', '불필요한 구독 서비스 정리하기']),
-        ('Lv.3 자산 성장', '금융상품 활용 및 자산 증식', ['절약 금액 저축하기', '적금 가입하기', '비상금 만들기']),
+        ('Lv.1 금융 진단', '소비 흐름을 정확히 파악합니다.', ['월 소비 내역 확인하기', '소비 카테고리 분석하기', '고정지출 확인하기']),
+        ('Lv.2 금융 기초', '불필요한 지출을 줄이는 습관을 만듭니다.', ['소비 예산 설정하기', '불필요한 지출 찾기', '구독 서비스 정리하기']),
+        ('Lv.3 목돈 준비', '절약한 금액을 저축으로 연결합니다.', ['카드 혜택 비교하기', '절약 목표 설정하기', '절약 금액 자동저축하기']),
+        ('Lv.4 자산 성장', '기초 자산 형성을 시작합니다.', ['비상금 100만원 만들기', '적금 가입하기', '금융 목표 설정하기']),
+        ('Lv.5 금융 완성', '자산과 소비를 함께 관리합니다.', ['자산 현황 점검하기', 'ISA 계좌 알아보기', '투자 공부 시작하기']),
     ],
     '🐯 성장형 투자러': [
-        ('Lv.1 금융 기초', '현재 재무 상태 파악 및 금융 목표 설정', ['비상금 확보하기', '투자 목표 설정하기', '투자 공부 시작하기']),
-        ('Lv.2 금융 습관', '저축 및 소비 습관 형성', ['증권계좌 개설하기', 'ISA 계좌 알아보기', 'ETF 상품 비교하기']),
-        ('Lv.3 자산 성장', '금융상품 활용 및 자산 증식', ['ETF 분산투자 시작하기', '투자 포트폴리오 구성하기', '투자 성과 점검하기']),
+        ('Lv.1 금융 진단', '투자를 시작하기 전 기본 상태를 점검합니다.', ['투자 가능 금액 계산하기', '금융 목표 설정하기', '투자 성향 확인하기']),
+        ('Lv.2 금융 기초', '투자 전 안전장치를 마련합니다.', ['비상금 확보하기', '소비 예산 설정하기', '투자 공부 시작하기']),
+        ('Lv.3 목돈 준비', '투자 계좌와 상품을 이해합니다.', ['증권계좌 개설하기', 'ISA 계좌 알아보기', 'ETF 상품 비교하기']),
+        ('Lv.4 자산 성장', '소액으로 분산 투자를 시작합니다.', ['ETF 투자 시작하기', '분산 투자하기', '투자 기록 작성하기']),
+        ('Lv.5 금융 완성', '투자 성과를 점검하고 조정합니다.', ['포트폴리오 점검하기', '투자 성과 분석하기', '리밸런싱 진행하기']),
     ],
     '🐻 재정 점검러': [
-        ('Lv.1 금융 기초', '현재 재무 상태 파악 및 금융 목표 설정', ['월 지출 분석하기', '고정비 확인하기', '대출 현황 확인하기']),
-        ('Lv.2 금융 습관', '저축 및 소비 습관 형성', ['소비 예산 설정하기', '대출 상환 계획 세우기', '비상금 목표 설정하기']),
-        ('Lv.3 자산 성장', '금융상품 활용 및 자산 증식', ['비상금 100만원 만들기', '적금 가입하기', '금융 목표 설정하기']),
+        ('Lv.1 금융 진단', '지출과 대출 현황을 확인합니다.', ['월 지출 분석하기', '고정비 확인하기', '대출 현황 확인하기']),
+        ('Lv.2 금융 기초', '재무 안정화를 위한 지출 계획을 세웁니다.', ['소비 예산 설정하기', '지출 줄이기 계획 세우기', '금융 목표 설정하기']),
+        ('Lv.3 목돈 준비', '대출 상환과 비상금 마련을 병행합니다.', ['대출 상환 계획 세우기', '비상금 목표 설정하기', '월 저축 습관 만들기']),
+        ('Lv.4 자산 성장', '기초 자산과 신용 관리를 시작합니다.', ['비상금 100만원 만들기', '적금 가입하기', '신용점수 확인하기']),
+        ('Lv.5 금융 완성', '장기 재무 계획을 정리합니다.', ['대출 상환률 점검하기', '자산 현황 정리하기', '장기 재무계획 세우기']),
     ],
     '🦁 공격형 자산러': [
-        ('Lv.1 금융 기초', '현재 재무 상태 파악 및 금융 목표 설정', ['투자 목표 설정하기', '투자 가능 금액 계산하기', '투자 포트폴리오 설계하기']),
-        ('Lv.2 금융 습관', '저축 및 소비 습관 형성', ['국내 ETF 투자하기', '해외 ETF 투자하기', 'ISA 활용하기']),
-        ('Lv.3 자산 성장', '금융상품 활용 및 자산 증식', ['자산 비중 점검하기', '투자 성과 분석하기', '리밸런싱 진행하기']),
+        ('Lv.1 금융 진단', '공격적 자산 증식을 위한 기본 상태를 점검합니다.', ['투자 목표 설정하기', '자산 현황 점검하기', '투자 가능 금액 계산하기']),
+        ('Lv.2 금융 기초', '리스크 관리를 위한 원칙을 세웁니다.', ['비상금 확보하기', '투자 원칙 정하기', '포트폴리오 설계하기']),
+        ('Lv.3 목돈 준비', 'ETF와 ISA를 활용한 투자 기반을 만듭니다.', ['국내 ETF 투자하기', '해외 ETF 투자하기', 'ISA 계좌 활용하기']),
+        ('Lv.4 자산 성장', '투자 성과와 리스크를 관리합니다.', ['자산 비중 점검하기', '투자 성과 분석하기', '리스크 관리하기']),
+        ('Lv.5 금융 완성', '장기 투자 전략을 완성합니다.', ['포트폴리오 리밸런싱', '장기 투자 전략 수립', '연간 수익률 점검하기']),
     ],
 }
 
 ROADMAP_COMMENTS = {
-    '🐢 안정형 저축러': '이번 달에는 자동저축 설정과 비상금 목표 달성을 우선 추천드려요.',
+    '🐢 안정형 저축러': '이번 달에는 비상금 마련과 자동저축 설정을 우선 추천드려요.',
     '🐿 계획형 목돈러': '이번 달에는 비상금 마련과 자동저축 설정을 우선 추천드려요.',
-    '🦊 똑똑한 소비러': '이번 달에는 소비 예산 설정과 불필요한 구독 정리를 우선 추천드려요.',
-    '🐯 성장형 투자러': '이번 달에는 비상금 확보와 ETF 기초 학습을 우선 추천드려요.',
+    '🦊 똑똑한 소비러': '이번 달에는 소비 예산 설정과 구독 서비스 정리를 우선 추천드려요.',
+    '🐯 성장형 투자러': '이번 달에는 비상금 확보와 투자 공부 시작을 우선 추천드려요.',
     '🐻 재정 점검러': '이번 달에는 지출 분석과 대출 상환 계획을 우선 추천드려요.',
-    '🦁 공격형 자산러': '이번 달에는 포트폴리오 점검과 리밸런싱 기준 설정을 우선 추천드려요.',
+    '🦁 공격형 자산러': '이번 달에는 투자 원칙 정하기와 포트폴리오 설계를 우선 추천드려요.',
 }
 
+
+def to_int(value):
+    try:
+        return int(str(value).replace(",", "").replace("-", "0"))
+    except (TypeError, ValueError):
+        return 0
+
+
+def to_float(value):
+    try:
+        return float(str(value).replace(",", "").replace("-", "0"))
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def serialize_stock_item(item):
+    return {
+        "code": item.get("srtnCd", ""),
+        "name": item.get("itmsNm", ""),
+        "market": item.get("mrktCtg", ""),
+        "base_date": item.get("basDt", ""),
+        "current_price": to_int(item.get("clpr")),
+        "change_rate": to_float(item.get("fltRt")),
+        "market_cap": to_int(item.get("mrktTotAmt")),
+        "volume": to_int(item.get("trqu")),
+        "amount": to_int(item.get("trPrc")),
+    }
 
 def index(request):
     roadmap = list(RoadmapStep.objects.values('step_number', 'title', 'description'))
@@ -312,7 +355,7 @@ def diagnosis_to_payload(result):
 
 def get_latest_financial_type(user):
     latest = DiagnosisResult.objects.filter(user=user).order_by('-created_at').first()
-    if latest and latest.financial_type:
+    if latest and latest.financial_type in ROADMAP_TEMPLATES:
         return latest.financial_type
     return '🐿 계획형 목돈러'
 
@@ -329,6 +372,9 @@ def ensure_roadmap_for_type(type_code):
                 'order': level_index,
             },
         )
+        RoadmapMission.objects.filter(roadmap_template=template).exclude(
+            mission_title__in=missions
+        ).delete()
         for mission_index, mission_title in enumerate(missions, start=1):
             RoadmapMission.objects.update_or_create(
                 roadmap_template=template,
@@ -365,17 +411,16 @@ def get_user_roadmap(user):
         )
 
     unlocked_level = 1
-    if level_completion.get(1):
-        unlocked_level = 2
-    if level_completion.get(1) and level_completion.get(2):
-        unlocked_level = 3
+    for template in templates:
+        if template.level == unlocked_level and level_completion.get(template.level):
+            unlocked_level += 1
+    max_level = max((template.level for template in templates), default=1)
+    unlocked_level = min(unlocked_level, max_level)
 
     levels = []
     for template in templates:
-        if template.level > unlocked_level:
-            continue
-
-        is_locked = template.level < unlocked_level
+        is_future_level = template.level > unlocked_level
+        is_past_level = template.level < unlocked_level
         missions = []
         for mission in template.missions.all():
             user_mission = user_missions[mission.id]
@@ -386,25 +431,27 @@ def get_user_roadmap(user):
                 'category': mission.category,
                 'order': mission.order,
                 'is_completed': user_mission.is_completed,
-                'is_locked': is_locked,
+                'is_locked': is_future_level or is_past_level,
             })
         levels.append({
             'id': template.id,
             'level': template.level,
             'title': template.title,
             'description': template.description,
-            'is_locked': is_locked,
+            'is_locked': is_future_level,
+            'is_past': is_past_level,
             'missions': missions,
         })
 
     name = user.first_name or user.username
     type_name = type_code.split(' ', 1)[1] if ' ' in type_code else type_code
+    comment = ROADMAP_COMMENTS.get(type_code, ROADMAP_COMMENTS['🐿 계획형 목돈러'])
     return {
         'type_code': type_code,
         'progress': progress,
         'completed_count': completed_count,
         'total_count': total_count,
-        'comment': f'{name}님은 {type_name}입니다. {ROADMAP_COMMENTS.get(type_code, ROADMAP_COMMENTS["🐿 계획형 목돈러"])}',
+        'comment': f'{name}님은 {type_name}입니다. {comment}',
         'levels': levels,
     }
 
@@ -413,13 +460,22 @@ def get_user_roadmap(user):
 @login_required
 def api_diagnosis(request):
     if request.method == 'POST':
-        data = request.POST
-        income_level = data.get('income_level', '').strip()
-        spending_style = data.get('spending_style', '').strip()
-        financial_goal = data.get('financial_goal', '').strip()
-        investment_style = data.get('investment_style', '').strip()
-        asset_level = data.get('asset_level', '').strip()
-        loan_type = data.get('loan_type', '').strip()
+        content_type = request.headers.get('Content-Type', '')
+
+        if content_type.startswith('application/json'):
+            try:
+                data = json.loads(request.body)
+            except json.JSONDecodeError:
+                return JsonResponse({'message': '?섎せ???붿껌 ?뺤떇?낅땲??'}, status=400)
+        else:
+            data = request.POST
+
+        income_level = (data.get('income_level') or '').strip()
+        spending_style = (data.get('spending_style') or '').strip()
+        financial_goal = (data.get('financial_goal') or '').strip()
+        investment_style = (data.get('investment_style') or '').strip()
+        asset_level = (data.get('asset_level') or '').strip()
+        loan_type = (data.get('loan_type') or '').strip()
 
         if not all([income_level, spending_style, financial_goal, investment_style, asset_level, loan_type]):
             return JsonResponse({'message': '모든 진단 항목을 선택해 주세요.'}, status=400)
@@ -467,8 +523,24 @@ def api_diagnosis(request):
             summary=type_content['intro'],
         )
 
-        return JsonResponse(diagnosis_to_payload(result))
+        return JsonResponse({
+            'message': '吏꾨떒???꾨즺?섏뿀?듬땲??',
+            'result': diagnosis_to_payload(result),
+        }, status=201)
     return JsonResponse({'message': 'POST 요청만 지원합니다.'}, status=405)
+
+
+@login_required
+def api_latest_diagnosis(request):
+    latest_diagnosis = (
+        DiagnosisResult.objects.filter(user=request.user)
+        .order_by('-created_at')
+        .first()
+    )
+
+    return JsonResponse({
+        'result': diagnosis_to_payload(latest_diagnosis) if latest_diagnosis else None,
+    })
 
 
 @login_required
@@ -488,13 +560,30 @@ def api_user_mission(request, mission_id):
     if mission is None:
         return JsonResponse({'message': '미션을 찾을 수 없습니다.'}, status=404)
 
-    user_mission, _ = UserMission.objects.get_or_create(user=request.user, mission=mission)
-    if user_mission.is_completed:
-        roadmap = get_user_roadmap(request.user)
-        current_level = max((level['level'] for level in roadmap['levels']), default=1)
-        if mission.roadmap_template.level < current_level:
-            return JsonResponse({'message': '이전 레벨 미션은 완료 해제할 수 없습니다.', 'roadmap': roadmap}, status=400)
+    roadmap = get_user_roadmap(request.user)
+    level = next(
+        (
+            level
+            for level in roadmap['levels']
+            if level['level'] == mission.roadmap_template.level
+        ),
+        None,
+    )
+    mission_state = next(
+        (
+            mission
+            for mission in level['missions']
+            if mission['id'] == mission_id
+        ),
+        None,
+    ) if level else None
+    if mission_state and mission_state['is_locked']:
+        message = '이미 완료한 이전 레벨의 미션은 변경할 수 없습니다.'
+        if level and level['is_locked']:
+            message = '이전 레벨의 미션을 모두 완료하면 다음 레벨이 열립니다.'
+        return JsonResponse({'message': message, 'roadmap': roadmap}, status=400)
 
+    user_mission, _ = UserMission.objects.get_or_create(user=request.user, mission=mission)
     user_mission.is_completed = not user_mission.is_completed
     user_mission.completed_at = timezone.now() if user_mission.is_completed else None
     user_mission.save(update_fields=['is_completed', 'completed_at'])
@@ -782,6 +871,11 @@ def serialize_subscription(subscription):
     }
 
 
+def calculate_age(birth_date):
+    today = date.today()
+    return today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+
+
 @csrf_exempt
 @login_required
 def api_profile(request):
@@ -804,8 +898,7 @@ def api_profile(request):
                 birth_date = datetime.strptime(birth_date_value, '%Y-%m-%d').date()
             except ValueError:
                 return JsonResponse({'message': '생년월일 형식이 올바르지 않습니다.'}, status=400)
-            today = date.today()
-            age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+            age = calculate_age(birth_date)
 
         request.user.first_name = name
         request.user.email = email
@@ -850,6 +943,7 @@ def serialize_deposit_product(product, user=None):
     return {
         'id': product.id,
         'product_type': product.product_type,
+        'product_type_display': product.get_product_type_display(),
         'financial_company_name': product.financial_company_name,
         'product_name': product.product_name,
         'join_way': product.join_way,
@@ -894,6 +988,126 @@ def api_deposit_products(request):
         .distinct()
     )
     return JsonResponse({'products': product_list, 'companies': companies})
+
+
+def parse_stock_number(value, default=0):
+    if value in [None, '']:
+        return default
+    try:
+        return Decimal(str(value).replace(',', ''))
+    except (InvalidOperation, ValueError):
+        return default
+
+
+def serialize_stock_item(item):
+    current_price = parse_stock_number(item.get('clpr'))
+    change = parse_stock_number(item.get('vs'))
+    change_rate = parse_stock_number(item.get('fltRt'))
+    volume = parse_stock_number(item.get('trqu'))
+    market_cap = parse_stock_number(item.get('mrktTotAmt'))
+
+    return {
+        'code': item.get('srtnCd') or item.get('isinCd') or '',
+        'isin_code': item.get('isinCd') or '',
+        'name': item.get('itmsNm') or '',
+        'market': item.get('mrktCtg') or '',
+        'base_date': item.get('basDt') or '',
+        'current_price': int(current_price),
+        'change': int(change),
+        'change_rate': float(change_rate),
+        'volume': int(volume),
+        'market_cap': int(market_cap),
+    }
+
+
+def api_stocks(request):
+    api_key = settings.KRX_API_KEY
+
+    if not api_key:
+        return JsonResponse(
+            {"message": "공공데이터포털 API 키가 설정되어 있지 않습니다."},
+            status=500
+        )
+
+    keyword = request.GET.get("q", "").strip()
+    market = request.GET.get("market", "").strip()
+    ordering = request.GET.get("ordering", "market_cap").strip()
+    page = request.GET.get("page", "1").strip() or "1"
+    per_page = request.GET.get("per_page", "30").strip() or "30"
+
+    params = {
+        "serviceKey": api_key,
+        "resultType": "json",
+        "pageNo": page,
+        "numOfRows": per_page,
+    }
+
+    if keyword:
+        if keyword.isdigit():
+            params["likeSrtnCd"] = keyword
+        else:
+            params["likeItmsNm"] = keyword
+
+    try:
+        response = requests.get(
+            settings.STOCK_API_URL,
+            params=params,
+            timeout=10,
+        )
+
+        print("요청 URL:", response.url)
+        print("응답 상태:", response.status_code)
+        print("응답 내용:", response.text[:500])
+
+        response.raise_for_status()
+        payload = response.json()
+
+    except requests.RequestException as e:
+        print("주식 API 요청 실패:", e)
+        return JsonResponse(
+            {"message": f"주식 API 요청 실패: {str(e)}"},
+            status=502
+        )
+
+    except ValueError:
+        print("JSON 변환 실패:", response.text[:500])
+        return JsonResponse(
+            {
+                "message": "주식 API 응답이 JSON 형식이 아닙니다.",
+                "raw": response.text[:500],
+            },
+            status=502
+        )
+
+    body = payload.get("response", {}).get("body", {})
+    items = body.get("items", {}).get("item", [])
+
+    if isinstance(items, dict):
+        items = [items]
+
+    stocks = [serialize_stock_item(item) for item in items]
+    stocks = deduplicate_latest_stocks(stocks)
+
+    if market:
+        stocks = [stock for stock in stocks if stock["market"] == market]
+
+    if ordering == "name":
+        stocks.sort(key=lambda item: item["name"])
+    elif ordering == "price":
+        stocks.sort(key=lambda item: item["current_price"], reverse=True)
+    elif ordering == "change_rate":
+        stocks.sort(key=lambda item: item["change_rate"], reverse=True)
+    else:
+        stocks.sort(key=lambda item: item["market_cap"], reverse=True)
+
+    markets = sorted({stock["market"] for stock in stocks if stock["market"]})
+    total_count = body.get("totalCount", len(stocks))
+
+    return JsonResponse({
+        "stocks": stocks,
+        "markets": markets,
+        "total_count": total_count,
+    })
 
 
 def api_deposit_product_detail(request, product_id):
@@ -1019,6 +1233,13 @@ def api_bank_route(request):
     })
 
 
+@login_required
+def api_map_config(request):
+    return JsonResponse({
+        'kakao_map_app_key': settings.KAKAO_MAP_APP_KEY,
+    })
+
+
 @csrf_exempt
 @login_required
 def api_join_deposit_product(request, product_id):
@@ -1038,3 +1259,345 @@ def api_join_deposit_product(request, product_id):
         'is_subscribed': True,
         'subscription_id': subscription.id,
     })
+
+
+
+from django.http import JsonResponse
+
+def test_api(request):
+    return JsonResponse({
+        "message": "Django API 연결 성공",
+        "project": "FinPick"
+    })
+
+
+
+from django.http import JsonResponse
+from .models import DepositProduct
+
+
+def deposit_product_list_api(request):
+    products = DepositProduct.objects.all()
+
+    data = []
+
+    for product in products:
+        data.append({
+            "id": product.id,
+            "product_type": product.product_type,
+            "product_type_display": product.get_product_type_display(),
+            "disclosure_month": product.disclosure_month,
+            "financial_company_code": product.financial_company_code,
+            "financial_company_name": product.financial_company_name,
+            "product_code": product.product_code,
+            "product_name": product.product_name,
+            "join_way": product.join_way,
+            "maturity_interest": product.maturity_interest,
+            "special_condition": product.special_condition,
+            "join_deny": product.join_deny,
+            "join_member": product.join_member,
+            "etc_note": product.etc_note,
+            "max_limit": product.max_limit,
+            "updated_at": product.updated_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "created_at": product.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+        })
+
+    return JsonResponse(data, safe=False)
+
+
+from django.http import JsonResponse
+from .models import DepositProduct
+
+
+def deposit_product_list_api(request):
+    products = DepositProduct.objects.all()
+
+    data = []
+
+    for product in products:
+        data.append({
+            "id": product.id,
+            "product_type": product.product_type,
+            "product_type_display": product.get_product_type_display(),
+            "disclosure_month": product.disclosure_month,
+            "financial_company_code": product.financial_company_code,
+            "financial_company_name": product.financial_company_name,
+            "product_code": product.product_code,
+            "product_name": product.product_name,
+            "join_way": product.join_way,
+            "maturity_interest": product.maturity_interest,
+            "special_condition": product.special_condition,
+            "join_deny": product.join_deny,
+            "join_member": product.join_member,
+            "etc_note": product.etc_note,
+            "max_limit": product.max_limit,
+            "updated_at": product.updated_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "created_at": product.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+        })
+
+    return JsonResponse(data, safe=False)
+
+
+@csrf_exempt
+def signup_api(request):
+    if request.method != "POST":
+        return JsonResponse({
+            "message": "POST 요청만 허용됩니다."
+        }, status=405)
+
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({
+            "message": "잘못된 요청 형식입니다."
+        }, status=400)
+
+    username = body.get("username")
+    email = body.get("email")
+    name = body.get("name")
+    birth_date_value = body.get("birth_date")
+    password1 = body.get("password1")
+    password2 = body.get("password2")
+
+    if not username or not email or not name or not birth_date_value or not password1 or not password2:
+        return JsonResponse({
+            "message": "모든 항목을 입력해주세요."
+        }, status=400)
+
+    try:
+        birth_date = datetime.strptime(birth_date_value, "%Y-%m-%d").date()
+    except ValueError:
+        return JsonResponse({
+            "message": "?앸뀈?붿씪 ?뺤떇???щ컮瑜댁? ?딆뒿?덈떎."
+        }, status=400)
+
+    age = calculate_age(birth_date)
+
+    if password1 != password2:
+        return JsonResponse({
+            "message": "비밀번호가 일치하지 않습니다."
+        }, status=400)
+
+    User = get_user_model()
+
+    if User.objects.filter(username=username).exists():
+        return JsonResponse({
+            "message": "이미 사용 중인 아이디입니다."
+        }, status=400)
+
+    if User.objects.filter(email=email).exists():
+        return JsonResponse({
+            "message": "이미 가입된 이메일입니다."
+        }, status=400)
+
+    user = User.objects.create_user(
+        username=username,
+        email=email,
+        password=password1,
+        first_name=name,
+    )
+    UserProfile.objects.create(user=user, birth_date=birth_date, age=age)
+
+    return JsonResponse({
+        "message": "회원가입이 완료되었습니다.",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "name": user.first_name,
+            "birth_date": birth_date.isoformat(),
+            "age": age,
+        }
+    }, status=201)
+
+
+@csrf_exempt
+def login_api(request):
+    if request.method != "POST":
+        return JsonResponse({
+            "message": "POST 요청만 허용됩니다."
+        }, status=405)
+
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({
+            "message": "잘못된 요청 형식입니다."
+        }, status=400)
+
+    username = body.get("username")
+    password = body.get("password")
+
+    if not username or not password:
+        return JsonResponse({
+            "message": "아이디와 비밀번호를 입력해주세요."
+        }, status=400)
+
+    user = authenticate(request, username=username, password=password)
+
+    if user is None:
+        return JsonResponse({
+            "message": "아이디 또는 비밀번호가 올바르지 않습니다."
+        }, status=400)
+
+    login(request, user)
+
+    return JsonResponse({
+        "message": "로그인되었습니다.",
+        "user": {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "name": user.first_name,
+        }
+    })
+
+
+def session_api(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            "authenticated": False,
+            "user": None,
+        })
+
+    return JsonResponse({
+        "authenticated": True,
+        "user": {
+            "id": request.user.id,
+            "username": request.user.username,
+            "email": request.user.email,
+            "name": request.user.first_name,
+        },
+    })
+
+
+@csrf_exempt
+def logout_api(request):
+    if request.method != "POST":
+        return JsonResponse({
+            "message": "POST ?붿껌留??덉슜?⑸땲??"
+        }, status=405)
+
+    logout(request)
+    return JsonResponse({
+        "message": "濡쒓렇?꾩썐?섏뿀?듬땲??",
+        "authenticated": False,
+    })
+
+
+def dashboard_api(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            "message": "로그인이 필요합니다."
+        }, status=401)
+
+    profile, _ = UserProfile.objects.get_or_create(user=request.user)
+    if profile.birth_date:
+        current_age = calculate_age(profile.birth_date)
+        if profile.age != current_age:
+            profile.age = current_age
+            profile.save(update_fields=["age"])
+
+    data = {
+        "user": {
+            "id": request.user.id,
+            "username": request.user.username,
+            "email": request.user.email,
+            "name": request.user.first_name,
+        },
+        "profile": {
+            "age": profile.age,
+            "job": profile.job,
+            "monthly_income": profile.monthly_income,
+            "monthly_expense": profile.monthly_expense,
+            "residence_type": profile.residence_type,
+            "saving_status": profile.saving_status,
+            "invest_experience": profile.invest_experience,
+            "birth_date": profile.birth_date.isoformat() if profile.birth_date else "",
+            "created_at": profile.created_at.strftime("%Y-%m-%d") if profile.created_at else "",
+        }
+    }
+
+    return JsonResponse(data)
+
+@csrf_exempt
+def diagnosis_api(request):
+    if request.method != "POST":
+        return JsonResponse({
+            "message": "POST 요청만 허용됩니다."
+        }, status=405)
+
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            "message": "로그인이 필요합니다."
+        }, status=401)
+
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({
+            "message": "잘못된 요청 형식입니다."
+        }, status=400)
+
+    income_level = body.get("income_level")
+    spending_style = body.get("spending_style")
+    financial_goal = body.get("financial_goal")
+    investment_style = body.get("investment_style")
+    asset_level = body.get("asset_level")
+    loan_type = body.get("loan_type")
+
+    if not all([
+        income_level,
+        spending_style,
+        financial_goal,
+        investment_style,
+        asset_level,
+        loan_type,
+    ]):
+        return JsonResponse({
+            "message": "모든 문항에 답변해주세요."
+        }, status=400)
+
+    result = {
+        "financial_type": "금융 기초형",
+        "intro": "금융 습관을 차근차근 만들어가면 좋은 단계입니다.",
+        "readiness_score": 60,
+        "profile_scores": {
+            "저축 습관": "★★★☆☆",
+            "소비 관리": "★★★☆☆",
+            "투자 성향": "★★☆☆☆",
+            "자산 관리": "★★★☆☆",
+        },
+        "strengths": [
+            "금융 목표를 가지고 있습니다.",
+            "자신의 소비 성향을 인식하고 있습니다.",
+        ],
+        "improvements": [
+            "비상금 마련이 필요합니다.",
+            "투자 전 기초 금융 지식을 쌓는 것이 좋습니다.",
+        ],
+        "finpick_comment": "지금은 무리한 투자보다 저축 습관과 비상금 마련이 우선입니다.",
+    }
+
+    return JsonResponse({
+        "message": "진단이 완료되었습니다.",
+        "result": result,
+    }, status=201)
+
+def deduplicate_latest_stocks(stocks):
+    latest_by_code = {}
+
+    for stock in stocks:
+        code = stock.get("code")
+        base_date = stock.get("base_date", "")
+
+        if not code:
+            continue
+
+        if code not in latest_by_code:
+            latest_by_code[code] = stock
+        else:
+            existing_date = latest_by_code[code].get("base_date", "")
+            if base_date > existing_date:
+                latest_by_code[code] = stock
+
+    return list(latest_by_code.values())

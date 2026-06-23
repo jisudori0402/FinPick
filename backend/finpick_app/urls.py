@@ -2,12 +2,19 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    path("api/dashboard/", views.dashboard_api),
+    path("api/login/", views.login_api),
+    path("api/logout/", views.logout_api),
+    path("api/session/", views.session_api),
+    path("api/signup/", views.signup_api),
+    path("api/test/", views.test_api),
     path('', views.index, name='index'),
     path('signup/', views.signup_view, name='signup'),
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
     path('dashboard/', views.dashboard_view, name='dashboard'),
     path('api/diagnosis/', views.api_diagnosis, name='api_diagnosis'),
+    path('api/diagnosis/latest/', views.api_latest_diagnosis, name='api_latest_diagnosis'),
     path('api/roadmap/', views.api_roadmap, name='api_roadmap'),
     path('api/missions/<int:mission_id>/toggle/', views.api_user_mission, name='api_user_mission'),
     path('api/products/', views.api_products, name='api_products'),
@@ -21,6 +28,8 @@ urlpatterns = [
     path('api/deposit-products/<int:product_id>/join/', views.api_join_deposit_product, name='api_join_deposit_product'),
     path('api/deposit-products/<int:product_id>/favorite/', views.api_favorite_deposit_product_toggle, name='api_favorite_deposit_product_toggle'),
     path('api/favorite-deposit-products/', views.api_favorite_deposit_products, name='api_favorite_deposit_products'),
+    path('api/stocks/', views.api_stocks, name='api_stocks'),
+    path('api/map-config/', views.api_map_config, name='api_map_config'),
     path('api/bank-route/', views.api_bank_route, name='api_bank_route'),
     path('api/spot-prices/', views.api_spot_prices, name='api_spot_prices'),
 ]

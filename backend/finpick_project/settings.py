@@ -11,6 +11,7 @@ DEBUG = True
 ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
+    'corsheaders',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -21,6 +22,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -68,3 +70,15 @@ LOGIN_URL = 'login'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 KAKAO_MAP_APP_KEY = os.getenv('KAKAO_MAP_APP_KEY', '')
 KAKAO_MOBILITY_REST_KEY = os.getenv('KAKAO_MOBILITY_REST_KEY', '')
+KRX_API_KEY = os.getenv('KRX_API_KEY') or os.getenv('STOCK_API_KEY') or os.getenv('DATA_GO_KR_API_KEY', '')
+STOCK_API_URL = os.getenv(
+    'STOCK_API_URL',
+    'https://apis.data.go.kr/1160100/service/GetStockSecuritiesInfoService/getStockPriceInfo',
+)
+
+
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+]
