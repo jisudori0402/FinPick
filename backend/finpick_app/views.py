@@ -131,33 +131,6 @@ ROADMAP_COMMENTS = {
 }
 
 
-def to_int(value):
-    try:
-        return int(str(value).replace(",", "").replace("-", "0"))
-    except (TypeError, ValueError):
-        return 0
-
-
-def to_float(value):
-    try:
-        return float(str(value).replace(",", "").replace("-", "0"))
-    except (TypeError, ValueError):
-        return 0.0
-
-
-def serialize_stock_item(item):
-    return {
-        "code": item.get("srtnCd", ""),
-        "name": item.get("itmsNm", ""),
-        "market": item.get("mrktCtg", ""),
-        "base_date": item.get("basDt", ""),
-        "current_price": to_int(item.get("clpr")),
-        "change_rate": to_float(item.get("fltRt")),
-        "market_cap": to_int(item.get("mrktTotAmt")),
-        "volume": to_int(item.get("trqu")),
-        "amount": to_int(item.get("trPrc")),
-    }
-
 def index(request):
     roadmap = list(RoadmapStep.objects.values('step_number', 'title', 'description'))
     products = list(ProductRecommendation.objects.values('name', 'product_type', 'reason', 'category'))
@@ -1020,8 +993,11 @@ def serialize_stock_item(item):
     }
 
 
+DEFAULT_STOCK_MARKETS = ['KOSPI', 'KOSDAQ', 'KONEX']
+
+
 def api_stocks(request):
-    api_key = settings.KRX_API_KEY
+    api_key = unquote(settings.KRX_API_KEY)
 
     if not api_key:
         return JsonResponse(
@@ -1032,14 +1008,22 @@ def api_stocks(request):
     keyword = request.GET.get("q", "").strip()
     market = request.GET.get("market", "").strip()
     ordering = request.GET.get("ordering", "market_cap").strip()
-    page = request.GET.get("page", "1").strip() or "1"
-    per_page = request.GET.get("per_page", "30").strip() or "30"
+    try:
+        page = max(int(request.GET.get("page", "1") or 1), 1)
+    except ValueError:
+        page = 1
+    try:
+        per_page = min(max(int(request.GET.get("per_page", "30") or 30), 1), 100)
+    except ValueError:
+        per_page = 30
+
+    fetch_count = 500 if keyword else 3000
 
     params = {
         "serviceKey": api_key,
         "resultType": "json",
-        "pageNo": page,
-        "numOfRows": per_page,
+        "pageNo": "1",
+        "numOfRows": str(fetch_count),
     }
 
     if keyword:
@@ -1055,26 +1039,19 @@ def api_stocks(request):
             timeout=10,
         )
 
-        print("요청 URL:", response.url)
-        print("응답 상태:", response.status_code)
-        print("응답 내용:", response.text[:500])
-
         response.raise_for_status()
         payload = response.json()
 
-    except requests.RequestException as e:
-        print("주식 API 요청 실패:", e)
+    except requests.RequestException:
         return JsonResponse(
-            {"message": f"주식 API 요청 실패: {str(e)}"},
+            {"message": "주식 API 요청에 실패했습니다."},
             status=502
         )
 
     except ValueError:
-        print("JSON 변환 실패:", response.text[:500])
         return JsonResponse(
             {
                 "message": "주식 API 응답이 JSON 형식이 아닙니다.",
-                "raw": response.text[:500],
             },
             status=502
         )
@@ -1087,6 +1064,10 @@ def api_stocks(request):
 
     stocks = [serialize_stock_item(item) for item in items]
     stocks = deduplicate_latest_stocks(stocks)
+    markets = sorted({
+        *DEFAULT_STOCK_MARKETS,
+        *(stock["market"] for stock in stocks if stock["market"]),
+    })
 
     if market:
         stocks = [stock for stock in stocks if stock["market"] == market]
@@ -1100,11 +1081,12 @@ def api_stocks(request):
     else:
         stocks.sort(key=lambda item: item["market_cap"], reverse=True)
 
-    markets = sorted({stock["market"] for stock in stocks if stock["market"]})
-    total_count = body.get("totalCount", len(stocks))
+    total_count = len(stocks)
+    start = (page - 1) * per_page
+    end = start + per_page
 
     return JsonResponse({
-        "stocks": stocks,
+        "stocks": stocks[start:end],
         "markets": markets,
         "total_count": total_count,
     })
