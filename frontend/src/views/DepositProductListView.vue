@@ -1,265 +1,375 @@
 <template>
-  <section class="card panel products-page">
-    <h2>모든 상품</h2>
-
-    <div class="category-tabs">
-      <button :class="{ active: productCategory === 'deposit' }" @click="setProductCategory('deposit')">
-        예적금
-      </button>
-      <button :class="{ active: productCategory === 'card' }" @click="setProductCategory('card')">
-        카드
-      </button>
-      <button :class="{ active: productCategory === 'loan' }" @click="setProductCategory('loan')">
-        주식
-      </button>
-      <button :class="{ active: productCategory === 'investment' }" @click="setProductCategory('investment')">
-        현물
-      </button>
-    </div>
-
-    <div v-if="productCategory === 'deposit'" class="filter-row">
-      <input
-        v-model="productFilters.q"
-        placeholder="상품명 검색"
-        @input="onSearchInput"
-      />
-
-      <select v-model="productFilters.company" @change="loadDepositProducts">
-        <option value="">전체 은행</option>
-        <option
-          v-for="company in productCompanies"
-          :key="company"
-          :value="company"
-        >
-          {{ company }}
-        </option>
-      </select>
-
-      <select v-model="productFilters.kind" @change="loadDepositProducts">
-        <option value="">예금+적금</option>
-        <option value="deposit">예금</option>
-        <option value="saving">적금</option>
-      </select>
-
-      <select v-model="productFilters.ordering" @change="loadDepositProducts">
-        <option value="rate">금리 높은순</option>
-        <option value="company">은행순</option>
-        <option value="name">상품명순</option>
-      </select>
-    </div>
-
-    <div v-if="productCategory === 'loan'" class="filter-row">
-      <input
-        v-model="stockFilters.q"
-        placeholder="종목명 또는 종목코드 검색"
-        @input="onStockSearchInput"
-      />
-
-      <select v-model="stockFilters.market" @change="loadStockProducts">
-        <option value="">전체 시장</option>
-        <option
-          v-for="market in stockMarkets"
-          :key="market"
-          :value="market"
-        >
-          {{ market }}
-        </option>
-      </select>
-
-      <select v-model="stockFilters.ordering" @change="loadStockProducts">
-        <option value="market_cap">시가총액 높은순</option>
-        <option value="price">현재가 높은순</option>
-        <option value="change_rate">등락률 높은순</option>
-        <option value="name">종목명순</option>
-      </select>
-    </div>
-
-    <div v-if="loading" class="status-box">
-      상품을 불러오는 중입니다.
-    </div>
-
-    <div v-else-if="error" class="status-box error">
-      {{ error }}
-    </div>
-
-    <template v-else>
-      <div v-if="productCategory === 'deposit' && !depositProducts.length" class="empty">
-        표시할 예적금 상품이 없습니다.
+  <section class="products-page product-hub-page">
+    <aside class="product-sidebar">
+      <div class="product-mascot" aria-hidden="true">
+        <span></span>
+        <strong>F</strong>
       </div>
 
-      <div v-if="productCategory === 'loan' && !stockProducts.length" class="empty">
-        표시할 주식 종목이 없습니다.
-      </div>
-
-      <div v-if="productCategory === 'deposit'" class="product-list">
-        <article
-          v-for="item in depositProducts"
-          :key="item.id"
-          class="product product-card"
-          @click="openDepositProduct(item.id)"
+      <nav class="product-side-nav" aria-label="상품 카테고리">
+        <button
+          v-for="item in productNavItems"
+          :key="item.key"
+          type="button"
+          :class="{ active: productCategory === item.key }"
+          @click="setProductCategory(item.key)"
         >
-          <button
-            class="favorite-btn"
-            :class="{ active: item.is_favorite }"
-            type="button"
-            :title="item.is_favorite ? '관심상품 해제' : '관심상품 추가'"
-            @click.stop="toggleFavoriteProduct(item)"
-          >
-            {{ item.is_favorite ? '★' : '☆' }}
-          </button>
+          <span>{{ item.icon }}</span>
+          {{ item.label }}
+        </button>
+      </nav>
 
-          <small>{{ item.product_type === 'deposit' ? '예금' : '적금' }}</small>
-          <h3>{{ item.product_name }}</h3>
-          <p>{{ item.financial_company_name }}</p>
+      <div class="product-tip-card">
+        <strong>FinPick TIP</strong>
+        <p>나에게 딱 맞는 상품을 찾으면 금융 목표 달성이 더 쉬워져요.</p>
+        <button type="button" @click="setProductCategory('deposit')">
+          상품 찾기 가이드
+        </button>
+      </div>
+    </aside>
 
-          <div class="rate">
-            최고 <span>{{ item.max_interest_rate || item.interest_rate || '-' }}%</span>
-          </div>
+    <div class="product-main">
+      <div class="product-toolbar">
+        <div>
+          <h1>{{ currentCategoryTitle }}</h1>
+          <p>{{ currentCategoryDescription }}</p>
+        </div>
 
-          <div class="product-meta">
-            <span>{{ item.best_term ? item.best_term + '개월' : '기간 정보 없음' }}</span>
-            <span>{{ item.join_way || '가입 방법 정보 없음' }}</span>
-          </div>
-        </article>
+        <label class="product-search">
+          <input
+            v-model="activeSearchKeyword"
+            :placeholder="searchPlaceholder"
+            @input="onUnifiedSearch"
+          />
+          <span aria-hidden="true">⌕</span>
+        </label>
       </div>
 
-      <div v-if="productCategory === 'loan'" class="product-list stock-list">
-        <article
-          v-for="item in stockProducts"
-          :key="item.code || item.isin_code"
-          class="product product-card stock-card"
-        >
-          <small>{{ item.market || '주식' }}</small>
-          <h3>{{ item.name }}</h3>
-          <p>{{ item.code }}</p>
-
-          <div class="rate">
-            현재가 <span>{{ formatWon(item.current_price) }}</span>
+      <div v-if="productCategory === 'recommended'" class="recommended-products">
+        <div class="recommend-card">
+          <div class="recommend-card-head">
+            <div class="recommend-icon piggy"></div>
+            <div>
+              <h2>예적금</h2>
+              <p>안정적으로 자산을 모으고 이자를 받아보세요.</p>
+            </div>
+            <button type="button" @click="setProductCategory('deposit')">
+              전체보기
+              <span>›</span>
+            </button>
           </div>
 
-          <div class="product-meta">
-            <span :class="{ positive: item.change_rate > 0, negative: item.change_rate < 0 }">
-              등락률 {{ formatRate(item.change_rate) }}
-            </span>
-            <span>거래량 {{ formatNumber(item.volume) }}</span>
-            <span>기준일 {{ formatStockDate(item.base_date) }}</span>
+          <div class="recommend-list">
+            <article
+              v-for="item in topDepositProducts"
+              :key="item.id"
+              class="recommend-row"
+              @click="openDepositProduct(item.id)"
+            >
+              <span class="row-icon bank-icon">{{ item.financial_company_name?.slice(0, 1) || '예' }}</span>
+              <div>
+                <strong>{{ item.product_name }}</strong>
+                <small>최고 연 {{ item.max_interest_rate || item.interest_rate || '-' }}%</small>
+              </div>
+              <span class="row-arrow">›</span>
+            </article>
           </div>
-        </article>
-      </div>
 
-      <div v-if="productCategory === 'investment'" class="result-box spot-panel">
-        <h3>현물 가격 변화</h3>
-
-        <div class="category-tabs spot-tabs">
-          <button :class="{ active: spotFilters.asset === 'gold' }" @click="setSpotAsset('gold')">
-            금(Gold)
-          </button>
-          <button :class="{ active: spotFilters.asset === 'silver' }" @click="setSpotAsset('silver')">
-            은(Silver)
+          <button class="more-button" type="button" @click="setProductCategory('deposit')">
+            더보기 <span>›</span>
           </button>
         </div>
 
-        <div class="spot-toolbar">
-          <label>
-            시작일
-            <input type="date" v-model="spotFilters.start" @change="loadSpotPrices()" />
-          </label>
+        <div class="recommend-card">
+          <div class="recommend-card-head">
+            <div class="recommend-icon stock"></div>
+            <div>
+              <h2>주식</h2>
+              <p>시장 가능성이 높은 기업에 투자해보세요.</p>
+            </div>
+            <button type="button" @click="setProductCategory('stock')">
+              전체보기
+              <span>›</span>
+            </button>
+          </div>
 
-          <label>
-            종료일
-            <input type="date" v-model="spotFilters.end" @change="loadSpotPrices()" />
-          </label>
+          <div class="recommend-list">
+            <article
+              v-for="item in topStockProducts"
+              :key="item.code || item.isin_code"
+              class="recommend-row"
+            >
+              <span class="row-icon stock-icon">{{ item.name?.slice(0, 1) || '주' }}</span>
+              <div>
+                <strong>{{ item.name }}</strong>
+                <small>{{ formatWon(item.current_price) }}</small>
+              </div>
+              <em :class="{ positive: item.change_rate > 0, negative: item.change_rate < 0 }">
+                {{ formatRate(item.change_rate) }}
+              </em>
+              <span class="row-arrow">›</span>
+            </article>
+          </div>
 
-          <button class="secondary-btn" type="button" @click="resetSpotPeriod">
-            전체 기간
+          <button class="more-button" type="button" @click="setProductCategory('stock')">
+            더보기 <span>›</span>
           </button>
         </div>
 
-        <p v-if="spotMessage" class="lock-note">{{ spotMessage }}</p>
-
-        <div v-if="spotPrices.length" class="spot-summary">
-          <div>
-            <small>선택 자산</small>
-            <strong>{{ spotAssetName }}</strong>
+        <div class="investment-test-card">
+          <div class="mini-mascot" aria-hidden="true">
+            <span></span>
           </div>
           <div>
-            <small>최근 가격</small>
-            <strong>{{ spotLatestPrice }}</strong>
+            <h2>나의 투자 성향에 맞는 맞춤 상품을 찾고 싶다면?</h2>
+            <p>간단한 투자 성향 테스트를 통해 최적의 상품을 추천받아보세요.</p>
+          </div>
+          <RouterLink class="primary-btn" to="/diagnosis">
+            투자 성향 테스트 시작
+            <span aria-hidden="true">›</span>
+          </RouterLink>
+        </div>
+
+        <div class="product-benefits">
+          <div>
+            <span>♢</span>
+            <strong>안전한 금융 상품</strong>
+            <p>검증된 금융기관의 상품 추천</p>
           </div>
           <div>
-            <small>조회 기간</small>
-            <strong>{{ spotDateRange }}</strong>
+            <span>⌕</span>
+            <strong>비교하고 선택</strong>
+            <p>여러 상품을 한눈에 비교</p>
+          </div>
+          <div>
+            <span>♡</span>
+            <strong>관심상품 저장</strong>
+            <p>나중에 다시 확인할 수 있어요</p>
+          </div>
+          <div>
+            <span>▣</span>
+            <strong>보안 안심</strong>
+            <p>개인정보는 안전하게 보호돼요</p>
           </div>
         </div>
+      </div>
 
-        <svg
-          v-if="spotChartPoints"
-          :key="`${spotFilters.asset}-${spotPrices.length}-${spotDateRange}`"
-          class="spot-chart"
-          viewBox="0 0 720 320"
-          preserveAspectRatio="none"
-        >
-          <g v-for="tick in spotYAxisTicks" :key="`y-${tick.label}`">
-            <line class="spot-grid" :x1="44" :y1="tick.y" :x2="696" :y2="tick.y"></line>
-            <text class="spot-label" :x="38" :y="tick.y + 4" text-anchor="end">{{ tick.label }}</text>
-          </g>
+      <template v-else>
+        <div v-if="productCategory === 'deposit'" class="product-filter-card">
+          <select v-model="productFilters.company" @change="loadDepositProducts">
+            <option value="">전체 은행</option>
+            <option v-for="company in productCompanies" :key="company" :value="company">
+              {{ company }}
+            </option>
+          </select>
 
-          <g v-for="tick in spotXAxisTicks" :key="`x-${tick.label}`">
-            <line class="spot-grid" :x1="tick.x" :y1="286" :x2="tick.x" :y2="292"></line>
-            <text class="spot-label" :x="tick.x" y="308" text-anchor="middle">{{ tick.label }}</text>
-          </g>
+          <select v-model="productFilters.kind" @change="loadDepositProducts">
+            <option value="">예금+적금</option>
+            <option value="deposit">예금</option>
+            <option value="saving">적금</option>
+          </select>
 
-          <line class="spot-axis" x1="44" y1="24" x2="44" y2="286"></line>
-          <line class="spot-axis" x1="44" y1="286" x2="696" y2="286"></line>
-          <text class="spot-title" x="44" y="16">가격($)</text>
-          <text class="spot-title" x="696" y="318" text-anchor="end">날짜</text>
-          <polyline :points="spotChartPoints"></polyline>
-          <circle
-            v-for="point in spotChartDots"
-            :key="point.date"
-            :cx="point.x"
-            :cy="point.y"
-            r="4"
-          >
-            <title>{{ point.date }} {{ point.price }}</title>
-          </circle>
-        </svg>
-
-        <div v-if="!spotPrices.length" class="empty">
-          선택한 기간의 현물 가격 데이터가 없습니다.
+          <select v-model="productFilters.ordering" @change="loadDepositProducts">
+            <option value="rate">금리 높은순</option>
+            <option value="company">은행순</option>
+            <option value="name">상품명순</option>
+          </select>
         </div>
-      </div>
 
-      <div
-        v-if="productCategory !== 'deposit' && productCategory !== 'investment' && productCategory !== 'loan' && !filteredRecommendations.length"
-        class="empty"
-      >
-        표시할 상품이 없습니다.
-      </div>
+        <div v-if="productCategory === 'stock'" class="product-filter-card two">
+          <select v-model="stockFilters.market" @change="loadStockProducts">
+            <option value="">전체 시장</option>
+            <option v-for="market in stockMarkets" :key="market" :value="market">
+              {{ market }}
+            </option>
+          </select>
 
-      <div v-if="productCategory !== 'deposit' && productCategory !== 'investment' && productCategory !== 'loan'" class="product-list">
-        <article
-          v-for="item in filteredRecommendations"
-          :key="item.name"
-          class="product product-card"
-        >
-          <small>{{ categoryLabel(productCategory) }}</small>
-          <h3>{{ item.name }}</h3>
-          <p>{{ item.reason }}</p>
-        </article>
-      </div>
-    </template>
+          <select v-model="stockFilters.ordering" @change="loadStockProducts">
+            <option value="market_cap">시가총액 높은순</option>
+            <option value="price">현재가 높은순</option>
+            <option value="change_rate">등락률 높은순</option>
+            <option value="name">종목명순</option>
+          </select>
+        </div>
+
+        <div v-if="loading" class="status-box">
+          상품을 불러오는 중입니다.
+        </div>
+
+        <div v-else-if="error" class="status-box error">
+          {{ error }}
+        </div>
+
+        <template v-else>
+          <div v-if="productCategory === 'deposit' && !depositProducts.length" class="empty product-empty">
+            표시할 예적금 상품이 없습니다.
+          </div>
+
+          <div v-if="productCategory === 'stock' && !stockProducts.length" class="empty product-empty">
+            표시할 주식 종목이 없습니다.
+          </div>
+
+          <div v-if="productCategory === 'deposit'" class="product-list product-grid-list">
+            <article
+              v-for="item in depositProducts"
+              :key="item.id"
+              class="product product-card product-list-card"
+              @click="openDepositProduct(item.id)"
+            >
+              <button
+                class="favorite-btn"
+                :class="{ active: item.is_favorite }"
+                type="button"
+                :title="item.is_favorite ? '관심상품 해제' : '관심상품 추가'"
+                @click.stop="toggleFavoriteProduct(item)"
+              >
+                {{ item.is_favorite ? '★' : '☆' }}
+              </button>
+
+              <small>{{ item.product_type === 'deposit' ? '예금' : '적금' }}</small>
+              <h3>{{ item.product_name }}</h3>
+              <p>{{ item.financial_company_name }}</p>
+
+              <div class="rate">
+                최고 <span>{{ item.max_interest_rate || item.interest_rate || '-' }}%</span>
+              </div>
+
+              <div class="product-meta">
+                <span>{{ item.best_term ? item.best_term + '개월' : '기간 정보 없음' }}</span>
+                <span>{{ item.join_way || '가입 방법 정보 없음' }}</span>
+              </div>
+            </article>
+          </div>
+
+          <div v-if="productCategory === 'stock'" class="product-list product-grid-list stock-list">
+            <article
+              v-for="item in stockProducts"
+              :key="item.code || item.isin_code"
+              class="product product-card product-list-card stock-card"
+            >
+              <small>{{ item.market || '주식' }}</small>
+              <h3>{{ item.name }}</h3>
+              <p>{{ item.code }}</p>
+
+              <div class="rate">
+                현재가 <span>{{ formatWon(item.current_price) }}</span>
+              </div>
+
+              <div class="product-meta">
+                <span :class="{ positive: item.change_rate > 0, negative: item.change_rate < 0 }">
+                  등락률 {{ formatRate(item.change_rate) }}
+                </span>
+                <span>거래량 {{ formatNumber(item.volume) }}</span>
+                <span>기준일 {{ formatStockDate(item.base_date) }}</span>
+              </div>
+            </article>
+          </div>
+
+          <div v-if="productCategory === 'spot'" class="spot-panel product-spot-panel">
+            <h2>현물 가격 변화</h2>
+
+            <div class="category-tabs spot-tabs">
+              <button :class="{ active: spotFilters.asset === 'gold' }" @click="setSpotAsset('gold')">
+                금(Gold)
+              </button>
+              <button :class="{ active: spotFilters.asset === 'silver' }" @click="setSpotAsset('silver')">
+                은(Silver)
+              </button>
+            </div>
+
+            <div class="spot-toolbar">
+              <label>
+                시작일
+                <input type="date" v-model="spotFilters.start" @change="loadSpotPrices()" />
+              </label>
+
+              <label>
+                종료일
+                <input type="date" v-model="spotFilters.end" @change="loadSpotPrices()" />
+              </label>
+
+              <button class="secondary-btn" type="button" @click="resetSpotPeriod">
+                전체 기간
+              </button>
+            </div>
+
+            <p v-if="spotMessage" class="lock-note">{{ spotMessage }}</p>
+
+            <div v-if="spotPrices.length" class="spot-summary">
+              <div>
+                <small>선택 자산</small>
+                <strong>{{ spotAssetName }}</strong>
+              </div>
+              <div>
+                <small>최근 가격</small>
+                <strong>{{ spotLatestPrice }}</strong>
+              </div>
+              <div>
+                <small>조회 기간</small>
+                <strong>{{ spotDateRange }}</strong>
+              </div>
+            </div>
+
+            <svg
+              v-if="spotChartPoints"
+              :key="`${spotFilters.asset}-${spotPrices.length}-${spotDateRange}`"
+              class="spot-chart"
+              viewBox="0 0 720 320"
+              preserveAspectRatio="none"
+            >
+              <g v-for="tick in spotYAxisTicks" :key="`y-${tick.label}`">
+                <line class="spot-grid" :x1="44" :y1="tick.y" :x2="696" :y2="tick.y"></line>
+                <text class="spot-label" :x="38" :y="tick.y + 4" text-anchor="end">{{ tick.label }}</text>
+              </g>
+
+              <g v-for="tick in spotXAxisTicks" :key="`x-${tick.label}`">
+                <line class="spot-grid" :x1="tick.x" :y1="286" :x2="tick.x" :y2="292"></line>
+                <text class="spot-label" :x="tick.x" y="308" text-anchor="middle">{{ tick.label }}</text>
+              </g>
+
+              <line class="spot-axis" x1="44" y1="24" x2="44" y2="286"></line>
+              <line class="spot-axis" x1="44" y1="286" x2="696" y2="286"></line>
+              <text class="spot-title" x="44" y="16">가격($)</text>
+              <text class="spot-title" x="696" y="318" text-anchor="end">날짜</text>
+              <polyline :points="spotChartPoints"></polyline>
+              <circle
+                v-for="point in spotChartDots"
+                :key="point.date"
+                :cx="point.x"
+                :cy="point.y"
+                r="4"
+              >
+                <title>{{ point.date }} {{ point.price }}</title>
+              </circle>
+            </svg>
+
+            <div v-if="!spotPrices.length" class="empty product-empty">
+              선택한 기간의 현물 가격 데이터가 없습니다.
+            </div>
+          </div>
+
+          <div v-if="productCategory === 'favorites'" class="favorite-preview-panel">
+            <div class="favorite-empty-icon">♡</div>
+            <h2>관심상품</h2>
+            <p>관심상품 기능은 다음 단계에서 연결할 예정이에요. 지금은 화면만 먼저 준비해두었습니다.</p>
+            <button class="primary-btn" type="button" @click="setProductCategory('recommended')">
+              추천 상품 둘러보기
+            </button>
+          </div>
+        </template>
+      </template>
+    </div>
   </section>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import axios from 'axios'
 
 const router = useRouter()
 
-const productCategory = ref('deposit')
+const productCategory = ref('recommended')
 const depositProducts = ref([])
 const stockProducts = ref([])
 const productCompanies = ref([])
@@ -271,6 +381,14 @@ const spotPrices = ref([])
 const spotMessage = ref('')
 let depositRequestSeq = 0
 let stockRequestSeq = 0
+
+const productNavItems = [
+  { key: 'recommended', label: '추천 상품', icon: '⌂' },
+  { key: 'deposit', label: '예적금', icon: '▥' },
+  { key: 'stock', label: '주식', icon: '♧' },
+  { key: 'spot', label: '현물', icon: '◷' },
+  { key: 'favorites', label: '관심상품', icon: '♡' },
+]
 
 const productFilters = ref({
   q: '',
@@ -296,15 +414,63 @@ const spotAssetLabels = {
   silver: '은(Silver)',
 }
 
-const categoryMap = {
-  card: ['card'],
-  loan: ['loan', 'loans'],
+const categoryMeta = {
+  recommended: {
+    title: '추천 상품',
+    description: 'FinPick이 엄선한 금융 상품을 확인해보세요.',
+    placeholder: '검색어를 입력하세요',
+  },
+  deposit: {
+    title: '예적금',
+    description: '은행별 예금과 적금을 비교해보세요.',
+    placeholder: '상품명 검색',
+  },
+  stock: {
+    title: '주식',
+    description: '종목명 또는 종목코드로 주식을 조회해보세요.',
+    placeholder: '종목명 또는 종목코드 검색',
+  },
+  spot: {
+    title: '현물',
+    description: '금과 은 가격 흐름을 확인해보세요.',
+    placeholder: '현물은 아래 조건으로 조회하세요',
+  },
+  favorites: {
+    title: '관심상품',
+    description: '저장한 관심상품을 모아볼 수 있는 공간입니다.',
+    placeholder: '관심상품 검색',
+  },
 }
 
-const filteredRecommendations = computed(() => {
-  const categories = categoryMap[productCategory.value] || []
-  return recommendations.value.filter((item) => categories.includes(item.category))
+const currentCategoryTitle = computed(() => categoryMeta[productCategory.value]?.title || '상품')
+const currentCategoryDescription = computed(() => categoryMeta[productCategory.value]?.description || '')
+const searchPlaceholder = computed(() => categoryMeta[productCategory.value]?.placeholder || '검색어를 입력하세요')
+
+const activeSearchKeyword = computed({
+  get() {
+    if (productCategory.value === 'deposit') {
+      return productFilters.value.q
+    }
+
+    if (productCategory.value === 'stock') {
+      return stockFilters.value.q
+    }
+
+    return ''
+  },
+  set(value) {
+    if (productCategory.value === 'deposit') {
+      productFilters.value.q = value
+    }
+
+    if (productCategory.value === 'stock') {
+      stockFilters.value.q = value
+    }
+  },
 })
+
+const topDepositProducts = computed(() => depositProducts.value.slice(0, 3))
+const topStockProducts = computed(() => stockProducts.value.slice(0, 3))
 
 const spotAssetName = computed(() => {
   return spotAssetLabels[spotFilters.value.asset] || '현물'
@@ -438,7 +604,7 @@ const buildStockParams = (overrides = {}) => {
 
 const loadDepositProducts = async (overrides = {}) => {
   const requestId = ++depositRequestSeq
-  loading.value = true
+  loading.value = productCategory.value !== 'recommended'
   error.value = ''
 
   try {
@@ -469,15 +635,9 @@ const loadDepositProducts = async (overrides = {}) => {
   }
 }
 
-const onSearchInput = (event) => {
-  const q = event.target.value
-  productFilters.value.q = q
-  loadDepositProducts({ q })
-}
-
 const loadStockProducts = async (overrides = {}) => {
   const requestId = ++stockRequestSeq
-  loading.value = true
+  loading.value = productCategory.value !== 'recommended'
   error.value = ''
 
   try {
@@ -499,7 +659,9 @@ const loadStockProducts = async (overrides = {}) => {
       return
     }
 
-    error.value = err.response?.data?.message || '주식 목록을 불러오지 못했습니다.'
+    if (productCategory.value !== 'recommended') {
+      error.value = err.response?.data?.message || '주식 목록을 불러오지 못했습니다.'
+    }
     console.error(err)
   } finally {
     if (requestId === stockRequestSeq) {
@@ -508,10 +670,18 @@ const loadStockProducts = async (overrides = {}) => {
   }
 }
 
-const onStockSearchInput = (event) => {
+const onUnifiedSearch = (event) => {
   const q = event.target.value
-  stockFilters.value.q = q
-  loadStockProducts({ q })
+
+  if (productCategory.value === 'deposit') {
+    productFilters.value.q = q
+    loadDepositProducts({ q })
+  }
+
+  if (productCategory.value === 'stock') {
+    stockFilters.value.q = q
+    loadStockProducts({ q })
+  }
 }
 
 const loadRecommendations = async () => {
@@ -598,26 +768,19 @@ const openDepositProduct = (productId) => {
 
 const setProductCategory = (category) => {
   productCategory.value = category
+  error.value = ''
 
-  if (category === 'deposit') {
+  if (category === 'deposit' && !depositProducts.value.length) {
     loadDepositProducts()
   }
 
-  if (category === 'loan') {
+  if (category === 'stock' && !stockProducts.value.length) {
     loadStockProducts()
   }
 
-  if (category === 'investment') {
+  if (category === 'spot') {
     loadSpotPrices()
   }
-}
-
-const categoryLabel = (category) => {
-  return {
-    card: '카드',
-    loan: '주식',
-    investment: '현물',
-}[category] || '상품'
 }
 
 const formatNumber = (value) => {
@@ -644,6 +807,7 @@ const formatStockDate = (dateText) => {
 
 onMounted(() => {
   loadDepositProducts()
+  loadStockProducts()
   loadRecommendations()
 })
 </script>
