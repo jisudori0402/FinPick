@@ -1,200 +1,148 @@
 <template>
-  <div>
-    <section v-if="!isLoggedIn" class="landing-hero panel">
+  <div class="home-page">
+    <section class="home-hero">
       <div class="hero-copy">
-        <h2>
-          금융, 무엇부터<br />
-          시작해야 할지 모르겠다면
-        </h2>
-
+        <h1>금융도 순서가 있습니다.</h1>
         <p>
-          FinPick이 나에게 맞는<br />
-          금융 성장 순서를 알려드릴게요.
+          진단부터 저축, 투자까지<br />
+          나만의 금융 성장 로드맵을 지금 시작해보세요.
         </p>
 
-        <div class="hero-actions">
-          <RouterLink class="primary-btn" to="/signup">
-            회원가입하고 시작하기
-          </RouterLink>
+        <RouterLink class="primary-btn hero-cta" :to="diagnosisStartLink">
+          금융 진단 시작하기
+          <span aria-hidden="true">-></span>
+        </RouterLink>
+      </div>
 
-          <RouterLink class="secondary-btn" to="/login">
-            로그인
-          </RouterLink>
+      <div class="journey-visual" aria-label="금융 성장 단계 미리보기">
+        <div class="cloud cloud-one"></div>
+        <div class="cloud cloud-two"></div>
+        <div class="flag"></div>
+        <div class="road"></div>
+
+        <div class="level-card level-one">
+          <span class="level-icon wallet-icon"></span>
+          <strong>Lv.1</strong>
+          <p>금융 기초 다지기</p>
+          <small>비상금 만들기</small>
+        </div>
+
+        <div class="level-card level-two">
+          <span class="level-icon piggy-icon"></span>
+          <strong>Lv.2</strong>
+          <p>목돈 마련하기</p>
+          <small>저축 시작하기</small>
+        </div>
+
+        <div class="level-card level-three">
+          <span class="level-icon chart-icon"></span>
+          <strong>Lv.3</strong>
+          <p>자산 성장하기</p>
+          <small>투자 시작하기</small>
         </div>
       </div>
 
-      <div class="hero-art" aria-hidden="true">
-        <div class="chart">
-          <div class="arrow"></div>
-          <div class="bar one"></div>
-          <div class="bar two"></div>
-          <div class="bar three"></div>
-          <div class="check-card">
-            <span></span>
-            <span></span>
-            <span></span>
-          </div>
-          <div class="coin">₩</div>
-        </div>
-      </div>
+      <aside class="roadmap-preview">
+        <h2>금융 성장 로드맵 미리보기</h2>
+        <ol>
+          <li v-for="step in roadmapPreview" :key="step.title">
+            <span>{{ step.number }}</span>
+            <div>
+              <strong>{{ step.title }}</strong>
+              <p>{{ step.description }}</p>
+            </div>
+          </li>
+        </ol>
+      </aside>
     </section>
 
-    <template v-else>
-      <section class="dashboard-hero panel">
-        <div class="home-summary">
-          <h2>안녕하세요, {{ displayName }}님 <span aria-hidden="true">👋</span></h2>
+    <section class="home-dashboard-grid" aria-label="홈 요약">
+      <RouterLink
+        v-if="isLoggedIn"
+        class="home-card level-summary"
+        :class="{ locked: !hasDiagnosisResult }"
+        :to="levelCardLink"
+      >
+        <div class="card-title-row">
+          <h2>현재 금융 레벨</h2>
+          <span class="info-dot">i</span>
+        </div>
 
-          <div class="financial-type">
-            <span class="type-icon" aria-hidden="true">{{ financialTypeIcon }}</span>
-            <span>{{ financialTypeName }}</span>
+        <div class="level-content">
+          <div class="sprout-badge" aria-hidden="true">
+            <span></span>
           </div>
+          <div>
+            <strong>{{ currentLevelLabel }}</strong>
+            <h3>{{ financialTypeName }}</h3>
+            <p>{{ levelDescription }}</p>
+          </div>
+        </div>
 
-          <p>{{ finpickComment }}</p>
+        <div class="level-progress">
+          <span :style="{ width: dashboardProgress + '%' }"></span>
+        </div>
+        <small>{{ dashboardProgress }}%</small>
+      </RouterLink>
 
+      <div v-else class="home-card level-summary locked">
+        <div class="card-title-row">
+          <h2>현재 금융 레벨</h2>
+          <span class="lock-dot">잠김</span>
+        </div>
+        <div class="locked-state">
+          <strong>로그인이 필요해요</strong>
+          <p>금융 진단 결과와 현재 레벨은 로그인 후 확인할 수 있어요.</p>
+          <RouterLink class="secondary-btn compact-btn" to="/login">로그인하기</RouterLink>
+        </div>
+      </div>
+
+      <article class="home-card goal-card">
+        <h2>다음 목표</h2>
+        <div class="goal-body">
+          <span class="piggy-large" aria-hidden="true"></span>
+          <div>
+            <strong>{{ nextMissionTitle }}</strong>
+            <p>{{ nextMissionDescription }}</p>
+          </div>
+        </div>
+        <RouterLink class="outline-btn" to="/roadmap">
+          목표 자세히 보기
+          <span aria-hidden="true">-></span>
+        </RouterLink>
+      </article>
+
+      <article class="home-card product-card-home">
+        <div class="card-title-row">
+          <h2>추천 상품</h2>
+          <RouterLink class="more-link" to="/deposit-products">더보기</RouterLink>
+        </div>
+
+        <div class="mini-product-list">
           <RouterLink
-            class="primary-btn dashboard-btn"
-            :to="hasDiagnosisResult ? '/diagnosis-result' : '/diagnosis'"
+            v-for="product in recommendedProducts"
+            :key="product.key"
+            class="mini-product"
+            :to="product.to"
           >
-            {{ hasDiagnosisResult ? '금융 진단 결과 자세히 보기' : '금융 진단 시작하기' }}
+            <span class="product-icon" :class="product.icon"></span>
+            <div>
+              <strong>{{ product.name }}</strong>
+              <small>{{ product.company }}</small>
+            </div>
+            <em>추천</em>
           </RouterLink>
         </div>
+      </article>
+    </section>
 
-        <aside class="progress-card" aria-label="금융 성장 현황">
-          <p class="card-label">현재 로드맵 레벨</p>
-          <strong class="roadmap-level">{{ roadmapLevel }}</strong>
-
-          <div class="progress-head">
-            <span>금융 성장 진행률</span>
-            <strong class="progress-percent">{{ dashboardProgress }}%</strong>
-          </div>
-
-          <div class="progress-bar">
-            <div
-              class="progress-fill"
-              :style="{ width: dashboardProgress + '%' }"
-            ></div>
-          </div>
-
-          <div class="next-goal">
-            <div class="round-icon">◎</div>
-            <div>
-              <div class="muted">다음 목표</div>
-              <strong>{{ nextMissionTitle }}</strong>
-            </div>
-          </div>
-        </aside>
-      </section>
-
-      <div class="dashboard-grid">
-        <section class="summary-card panel">
-          <div class="section-head">
-            <h2>나의 금융 성장 로드맵</h2>
-            <RouterLink class="text-link" to="/roadmap">전체 보기 ›</RouterLink>
-          </div>
-
-          <div class="roadmap-list compact">
-            <div
-              v-for="(mission, index) in dashboardMissions"
-              :key="mission.id || index"
-              class="roadmap-row"
-            >
-              <div
-                class="step-badge"
-                :class="{ done: mission.is_completed, active: !mission.is_completed && index === firstPendingIndex }"
-              >
-                {{ mission.is_completed ? '✓' : index + 1 }}
-              </div>
-
-              <div>
-                <small>
-                  STEP {{ index + 1 }}
-                  <span class="state-chip" :class="{ done: mission.is_completed }">
-                    {{ mission.is_completed ? '완료' : (index === firstPendingIndex ? '진행중' : '예정') }}
-                  </span>
-                </small>
-                <strong>{{ mission.title }}</strong>
-              </div>
-
-              <span class="row-arrow">›</span>
-            </div>
-          </div>
-        </section>
-
-        <section class="summary-card panel">
-          <div class="section-head">
-            <h2>관심종목</h2>
-            <RouterLink class="text-link" to="/deposit-products">전체 보기 ›</RouterLink>
-          </div>
-
-          <div v-if="!dashboardFavorites.length" class="recommend-box">
-            <span class="hot-chip">아직 관심상품이 없어요</span>
-            <h3>상품을 별표로 저장해보세요</h3>
-            <p>
-              모든 상품에서 마음에 드는 상품을<br />
-              한눈에 모아볼 수 있어요.
-            </p>
-            <RouterLink class="detail-btn" to="/deposit-products">
-              상품 보러가기 →
-            </RouterLink>
-          </div>
-
-          <div v-else class="roadmap-list compact">
-            <RouterLink
-              v-for="item in dashboardFavorites"
-              :key="item.id"
-              class="roadmap-row product-row"
-              :to="`/deposit-products/${item.id}`"
-            >
-              <div class="step-badge done">★</div>
-              <div>
-                <small>{{ item.financial_company_name }}</small>
-                <strong>{{ item.product_name }}</strong>
-                <small>최고 {{ item.max_interest_rate || item.interest_rate || '-' }}%</small>
-              </div>
-              <span class="row-arrow">›</span>
-            </RouterLink>
-          </div>
-        </section>
-      </div>
-
-      <section class="tip-card panel">
-        <div class="tip-icon">💡</div>
-        <div>
-          <h3>오늘의 금융 한마디</h3>
-          <p>
-            월 소득의 10%만 저축해도<br />
-            1년 뒤 360만원을 모을 수 있어요.
-          </p>
-        </div>
-        <RouterLink class="text-link" to="/roadmap">더 알아보기 ›</RouterLink>
-      </section>
-    </template>
-
-    <section v-if="!isLoggedIn" class="feature-grid">
-      <div class="feature-card panel">
-        <div class="feature-icon green">✓</div>
-        <h3>금융 진단</h3>
+    <section class="today-tip">
+      <div class="quote-mark" aria-hidden="true">"</div>
+      <div>
+        <h2>오늘의 금융 한마디</h2>
         <p>
-          내 금융 상태를<br />
-          쉽게 파악해요.
-        </p>
-      </div>
-
-      <div class="feature-card panel">
-        <div class="feature-icon blue">→</div>
-        <h3>성장 로드맵</h3>
-        <p>
-          비상금부터 투자까지<br />
-          순서대로 안내해요.
-        </p>
-      </div>
-
-      <div class="feature-card panel">
-        <div class="feature-icon purple">₩</div>
-        <h3>모든 상품</h3>
-        <p>
-          지금 필요한 금융상품을<br />
-          비교해볼 수 있어요.
+          월 소득의 10%만 저축해도<br />
+          1년 뒤 360만원을 모을 수 있어요.
         </p>
       </div>
     </section>
@@ -202,7 +150,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import axios from 'axios'
 
@@ -213,15 +161,89 @@ const diagnosisResult = ref(null)
 const roadmap = ref(null)
 const favoriteProducts = ref([])
 
+const roadmapPreview = [
+  {
+    number: 1,
+    title: '금융 상태 진단',
+    description: '현재 내 금융 상태를 분석해요',
+  },
+  {
+    number: 2,
+    title: '맞춤 로드맵 생성',
+    description: '나에게 필요한 금융 계획을 세워요',
+  },
+  {
+    number: 3,
+    title: '필요한 상품 추천',
+    description: '지금 단계에 맞는 상품을 추천해요',
+  },
+  {
+    number: 4,
+    title: '성장 관리 및 피드백',
+    description: '목표 달성률과 성장을 함께 관리해요',
+  },
+]
+
 const fallbackMissions = [
-  { title: '목표 금액 설정하기', is_completed: true },
-  { title: '월 저축 가능 금액 계산하기', is_completed: true },
-  { title: '소비 패턴 분석하기', is_completed: true },
-  { title: '월급의 20% 자동저축 설정하기', is_completed: true },
+  {
+    title: '금융 진단 완료하기',
+    description: '내 소비와 저축 성향부터 확인해보세요.',
+    is_completed: false,
+  },
+  {
+    title: '비상금 100만원 만들기',
+    description: '목표 달성까지 75만원 남았어요.',
+    is_completed: false,
+  },
+  {
+    title: '월 저축액 정하기',
+    description: '월급날 자동 저축 습관을 만들어보세요.',
+    is_completed: false,
+  },
+]
+
+const fallbackProducts = [
+  {
+    key: 'fallback-1',
+    name: '청년도약계좌',
+    company: '정부 지원 저축',
+    icon: 'bank',
+    to: '/deposit-products',
+  },
+  {
+    key: 'fallback-2',
+    name: 'OO은행 자유적금',
+    company: '최대 연 4.5%',
+    icon: 'piggy',
+    to: '/deposit-products',
+  },
+  {
+    key: 'fallback-3',
+    name: '생활비 통장 카드',
+    company: '잔돈 자동 모으기',
+    icon: 'card',
+    to: '/deposit-products',
+  },
 ]
 
 const hasDiagnosisResult = computed(() => {
   return diagnosisResult.value !== null
+})
+
+const diagnosisStartLink = computed(() => {
+  if (hasDiagnosisResult.value) {
+    return '/diagnosis-result'
+  }
+
+  return '/diagnosis'
+})
+
+const levelCardLink = computed(() => {
+  if (hasDiagnosisResult.value) {
+    return '/diagnosis-result'
+  }
+
+  return '/diagnosis'
 })
 
 const displayName = computed(() => {
@@ -229,40 +251,43 @@ const displayName = computed(() => {
 })
 
 const rawFinancialType = computed(() => {
-  return diagnosisResult.value?.financial_type || '금융 진단 전'
+  return diagnosisResult.value?.financial_type || '금융 새싹'
 })
 
-const financialTypeIcon = computed(() => {
-  const firstToken = rawFinancialType.value.split(' ')[0]
-  return firstToken.length <= 2 ? firstToken : '●'
+const currentLevelLabel = computed(() => {
+  const levels = roadmap.value?.levels || []
+  const currentLevel = levels.find((level) =>
+    (level.missions || []).some((mission) => !mission.is_completed),
+  )
+
+  if (currentLevel?.level) {
+    return `Lv.${currentLevel.level}`
+  }
+
+  return hasDiagnosisResult.value ? 'Lv.1' : '진단 전'
 })
 
 const financialTypeName = computed(() => {
-  const parts = rawFinancialType.value.split(' ')
-  if (parts.length > 1 && parts[0].length <= 2) {
-    return parts.slice(1).join(' ')
+  if (!hasDiagnosisResult.value) {
+    return '금융 진단 전'
   }
 
   return rawFinancialType.value
 })
 
-const finpickComment = computed(() => {
-  return (
-    diagnosisResult.value?.finpick_comment ||
-    '금융 진단을 완료하면 나에게 맞는 유형과 코멘트를 확인할 수 있어요.'
-  )
+const levelDescription = computed(() => {
+  if (!hasDiagnosisResult.value) {
+    return `${displayName.value}님의 첫 금융 진단을 기다리고 있어요.`
+  }
+
+  return diagnosisResult.value?.finpick_comment || '금융을 막 시작한 단계예요.'
 })
 
 const dashboardMissions = computed(() => {
   const levels = roadmap.value?.levels || []
   const missions = levels.flatMap((level) => level.missions || [])
 
-  return (missions.length ? missions : fallbackMissions).slice(0, 4)
-})
-
-const firstPendingIndex = computed(() => {
-  const index = dashboardMissions.value.findIndex((mission) => !mission.is_completed)
-  return index === -1 ? dashboardMissions.value.length : index
+  return missions.length ? missions : fallbackMissions
 })
 
 const dashboardProgress = computed(() => {
@@ -270,31 +295,37 @@ const dashboardProgress = computed(() => {
     return roadmap.value.progress
   }
 
-  return hasDiagnosisResult.value ? 100 : 0
+  return hasDiagnosisResult.value ? 25 : 0
 })
 
-const roadmapLevel = computed(() => {
-  const levels = roadmap.value?.levels || []
-  const currentLevel = levels[levels.length - 1]
-
-  if (currentLevel) {
-    if (currentLevel.title?.startsWith('Lv.')) {
-      return currentLevel.title
-    }
-
-    return `Lv.${currentLevel.level} ${currentLevel.title}`
-  }
-
-  return hasDiagnosisResult.value ? 'Lv.3 자산 성장' : '진단 전'
+const nextMission = computed(() => {
+  return dashboardMissions.value.find((mission) => !mission.is_completed) || fallbackMissions[1]
 })
 
 const nextMissionTitle = computed(() => {
-  const nextMission = dashboardMissions.value.find((mission) => !mission.is_completed)
-  return nextMission?.title || '비상금 300만원 만들기'
+  return nextMission.value?.title || nextMission.value?.mission_title || '비상금 100만원 만들기'
 })
 
-const dashboardFavorites = computed(() => {
-  return favoriteProducts.value.slice(0, 3)
+const nextMissionDescription = computed(() => {
+  return (
+    nextMission.value?.description ||
+    nextMission.value?.mission_description ||
+    '목표 달성까지 75만원 남았어요.'
+  )
+})
+
+const recommendedProducts = computed(() => {
+  if (!favoriteProducts.value.length) {
+    return fallbackProducts
+  }
+
+  return favoriteProducts.value.slice(0, 3).map((item, index) => ({
+    key: item.id || `favorite-${index}`,
+    name: item.product_name,
+    company: item.financial_company_name,
+    icon: index === 0 ? 'bank' : index === 1 ? 'piggy' : 'card',
+    to: `/deposit-products/${item.id}`,
+  }))
 })
 
 const syncHomeState = () => {
@@ -306,7 +337,11 @@ const syncHomeState = () => {
   const savedResult = localStorage.getItem('latestDiagnosisResult')
 
   if (savedResult) {
-    diagnosisResult.value = JSON.parse(savedResult)
+    try {
+      diagnosisResult.value = JSON.parse(savedResult)
+    } catch {
+      localStorage.removeItem('latestDiagnosisResult')
+    }
   }
 }
 

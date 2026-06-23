@@ -1,42 +1,41 @@
 <template>
   <div class="app">
-    <div class="shell">
-      <header>
-        <h1>FinPick</h1>
-        <p>사회초년생 금융 성장 로드맵 서비스</p>
+    <header class="site-header">
+      <RouterLink class="brand" to="/" aria-label="FinPick 홈">
+        <span class="brand-mark" aria-hidden="true">F</span>
+        <span>FinPick</span>
+      </RouterLink>
 
-        <nav>
-          <RouterLink class="pill-link" to="/">홈</RouterLink>
+      <nav class="site-nav" aria-label="주요 메뉴">
+        <RouterLink class="nav-link" to="/">홈</RouterLink>
+        <RouterLink class="nav-link" :to="diagnosisLink">금융 진단</RouterLink>
+        <RouterLink class="nav-link" to="/roadmap">성장 로드맵</RouterLink>
+        <RouterLink class="nav-link" to="/deposit-products">추천 상품</RouterLink>
+        <RouterLink class="nav-link" to="/community">커뮤니티</RouterLink>
+      </nav>
 
-          <template v-if="isLoggedIn">
-            <RouterLink class="pill-link" :to="diagnosisLink">
-              금융 진단
-            </RouterLink>
+      <div class="header-actions">
+        <button class="icon-button" type="button" aria-label="알림">
+          <span aria-hidden="true">!</span>
+        </button>
 
-            <RouterLink class="pill-link" to="/roadmap">로드맵</RouterLink>
-            <RouterLink class="pill-link" to="/deposit-products">모든 상품</RouterLink>
-            <RouterLink class="pill-link" to="/community">커뮤니티</RouterLink>
-            <RouterLink class="pill-link" to="/dashboard">프로필</RouterLink>
+        <template v-if="isLoggedIn">
+          <RouterLink class="mini-link" to="/dashboard">내 정보</RouterLink>
+          <button class="login-button" type="button" @click="logout">로그아웃</button>
+        </template>
 
-            <button class="pill-link" type="button" @click="logout">
-              로그아웃
-            </button>
-          </template>
+        <template v-else>
+          <RouterLink class="mini-link" to="/signup">회원가입</RouterLink>
+          <RouterLink class="login-button" to="/login">로그인</RouterLink>
+        </template>
+      </div>
+    </header>
 
-          <template v-else>
-            <RouterLink class="pill-link" to="/deposit-products">모든 상품</RouterLink>
-            <RouterLink class="pill-link" to="/community">커뮤니티</RouterLink>
-            <RouterLink class="pill-link" to="/signup">회원가입</RouterLink>
-            <RouterLink class="pill-link" to="/login">로그인</RouterLink>
-          </template>
-        </nav>
-      </header>
-
+    <main class="shell">
       <RouterView />
-    </div>
+    </main>
   </div>
 </template>
-
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
