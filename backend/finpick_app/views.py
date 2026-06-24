@@ -116,8 +116,10 @@ from .models import (
 )
 
 
+AI_RECOMMENDATION_COUNT = 5
+
 FINANCIAL_TYPE_RECOMMENDATION_PROMPT = """
-너는 지금부터 6가지의 금융 유형을 보고 각 유형에 알맞게 예적금 상품 3개, 그리고 주식 상품 3개를 추천하는 AI 어시스턴트야.
+너는 지금부터 6가지의 금융 유형을 보고 각 유형에 알맞게 예적금 상품 5개, 그리고 주식 상품 5개를 추천하는 AI 어시스턴트야.
 반드시 내가 제공하는 예적금 후보와 주식 후보 안에서만 골라야 해.
 
 # 금융 유형 판정
@@ -167,8 +169,8 @@ FINANCIAL_TYPE_RECOMMENDATION_PROMPT = """
 응답은 설명 없이 JSON만 반환해.
 형식:
 {
-  "deposit_product_ids": [1, 2, 3],
-  "stock_codes": ["005930", "000660", "035420"]
+  "deposit_product_ids": [1, 2, 3, 4, 5],
+  "stock_codes": ["005930", "000660", "035420", "051910", "035720"]
 }
 """
 
@@ -1107,14 +1109,21 @@ def api_profile(request):
     profile, _ = UserProfile.objects.get_or_create(user=request.user)
 
     if request.method == 'POST':
-        name = request.POST.get('name', '').strip()
-        email = request.POST.get('email', '').strip()
-        birth_date_value = request.POST.get('birth_date', '').strip()
+        try:
+            body = json.loads(request.body.decode('utf-8') or '{}')
+        except json.JSONDecodeError:
+            body = request.POST
 
-        if not name or not email:
-            return JsonResponse({'message': '이름과 이메일을 입력해 주세요.'}, status=400)
-        if User.objects.exclude(id=request.user.id).filter(username=email).exists() or User.objects.exclude(id=request.user.id).filter(email=email).exists():
-            return JsonResponse({'message': '이미 사용 중인 이메일입니다.'}, status=400)
+        name = (body.get('name') or '').strip()
+        birth_date_value = request.POST.get('birth_date', '').strip()
+        if hasattr(body, 'get'):
+            birth_date_value = (body.get('birth_date') or birth_date_value or '').strip()
+        job = (body.get('job') or '').strip()
+        residence_type = (body.get('residence_type') or body.get('region') or '').strip()
+        intro = (body.get('intro') or '').strip()
+
+        if not name:
+            return JsonResponse({'message': '이름을 입력해 주세요.'}, status=400)
 
         birth_date = None
         age = None
@@ -1126,12 +1135,13 @@ def api_profile(request):
             age = calculate_age(birth_date)
 
         request.user.first_name = name
-        request.user.email = email
-        request.user.username = email
-        request.user.save(update_fields=['first_name', 'email', 'username'])
+        request.user.save(update_fields=['first_name'])
         profile.birth_date = birth_date
         profile.age = age
-        profile.save(update_fields=['birth_date', 'age'])
+        profile.job = job
+        profile.residence_type = residence_type
+        profile.intro = intro
+        profile.save(update_fields=['birth_date', 'age', 'job', 'residence_type', 'intro'])
 
     subscriptions = (
         UserDepositSubscription.objects
@@ -1146,6 +1156,9 @@ def api_profile(request):
             'email': request.user.email,
             'birth_date': profile.birth_date.isoformat() if profile.birth_date else '',
             'age': profile.age,
+            'job': profile.job,
+            'residence_type': profile.residence_type,
+            'intro': profile.intro,
             'joined_at': timezone.localtime(request.user.date_joined).strftime('%Y-%m-%d'),
         },
         'subscriptions': subscription_list,
@@ -1315,18 +1328,18 @@ def normalize_ai_recommendations(ai_result, deposit_candidates, stock_candidates
             stock_codes.append(code)
 
     for product_id in deposit_candidate_ids:
-        if len(deposit_ids) >= 3:
+        if len(deposit_ids) >= AI_RECOMMENDATION_COUNT:
             break
         if product_id not in deposit_ids:
             deposit_ids.append(product_id)
 
     for code in stock_candidate_codes:
-        if len(stock_codes) >= 3:
+        if len(stock_codes) >= AI_RECOMMENDATION_COUNT:
             break
         if code not in stock_codes:
             stock_codes.append(code)
 
-    return deposit_ids[:3], stock_codes[:3]
+    return deposit_ids[:AI_RECOMMENDATION_COUNT], stock_codes[:AI_RECOMMENDATION_COUNT]
 
 
 def hydrate_recommended_products(deposit_ids, stock_codes, stock_candidates, user):
@@ -1356,7 +1369,11 @@ def api_ai_product_recommendations(request):
         financial_type=financial_type,
     ).first()
 
-    if cached:
+    if (
+        cached
+        and len(cached.deposit_product_ids or []) >= AI_RECOMMENDATION_COUNT
+        and len(cached.stock_codes or []) >= AI_RECOMMENDATION_COUNT
+    ):
         deposits, stocks = hydrate_recommended_products(
             cached.deposit_product_ids,
             cached.stock_codes,
@@ -2215,6 +2232,7 @@ def dashboard_api(request):
             "residence_type": profile.residence_type,
             "saving_status": profile.saving_status,
             "invest_experience": profile.invest_experience,
+            "intro": profile.intro,
             "birth_date": profile.birth_date.isoformat() if profile.birth_date else "",
             "created_at": profile.created_at.strftime("%Y-%m-%d") if profile.created_at else "",
             "password_changed_at": timezone.localtime(profile.password_changed_at).strftime("%Y-%m-%d") if profile.password_changed_at else "",

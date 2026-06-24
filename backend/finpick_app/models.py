@@ -12,6 +12,7 @@ class UserProfile(models.Model):
     residence_type = models.CharField(max_length=50, blank=True)
     saving_status = models.CharField(max_length=50, blank=True)
     invest_experience = models.CharField(max_length=50, blank=True)
+    intro = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     password_changed_at = models.DateTimeField(null=True, blank=True)
 
