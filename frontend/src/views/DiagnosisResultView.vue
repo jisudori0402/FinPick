@@ -13,7 +13,11 @@
         <div>
           <p class="result-eyebrow">🎉 진단이 완료되었어요!</p>
           <span class="result-kicker">당신의 금융 성장 레벨은</span>
-          <h1>{{ resultLevel }} {{ resultName }}</h1>
+          <h1>
+            <span v-if="resultLevel">{{ resultLevel }}</span>
+            <span v-else class="level-loading">레벨 확인 중</span>
+            {{ resultName }}
+          </h1>
           <p>{{ result.intro }}</p>
         </div>
 
@@ -72,7 +76,15 @@
             <span class="info-dot">i</span>
           </div>
 
-          <div class="type-avatar">{{ typeIcon }}</div>
+          <div class="type-avatar type-character-avatar">
+            <img
+              v-if="typeImageSrc"
+              :src="typeImageSrc"
+              :alt="`${resultName} 캐릭터`"
+              @error="markTypeImageError"
+            />
+            <span v-else>{{ typeIcon }}</span>
+          </div>
           <strong>{{ resultName }}</strong>
           <p>{{ typeDescription }}</p>
 
@@ -129,6 +141,8 @@ import { RouterLink } from 'vue-router'
 import axios from 'axios'
 
 const result = ref(null)
+const roadmap = ref(null)
+const typeImageErrors = ref({})
 const circleCircumference = 2 * Math.PI * 43
 
 const profileIcons = {
@@ -183,22 +197,49 @@ const resultName = computed(() => {
   return (result.value?.financial_type || '금융 새싹').replace(/^[^\s]+\s*/, '')
 })
 
+const getRoadmapLevelLabel = () => {
+  if (roadmap.value?.current_level_label) {
+    return roadmap.value.current_level_label
+  }
+
+  if (typeof roadmap.value?.current_level === 'number') {
+    return `Lv.${roadmap.value.current_level}`
+  }
+
+  const levels = roadmap.value?.levels || []
+  const currentLevel = levels.find((level) => {
+    if (level.is_locked) {
+      return false
+    }
+
+    const missions = level.missions || []
+    return missions.some((mission) => !mission.is_completed)
+  })
+
+  if (currentLevel?.level) {
+    return `Lv.${currentLevel.level}`
+  }
+
+  const maxLevel = Math.max(...levels.map((level) => Number(level.level) || 0))
+  return maxLevel > 0 ? `Lv.${maxLevel}` : ''
+}
+
+const typeCharacterImages = {
+  안정형: '/financial-types/stable-saver.png',
+  계획형: '/financial-types/planner-saver.png',
+  소비러: '/financial-types/smart-spender.png',
+  투자러: '/financial-types/growth-investor.png',
+  점검러: '/financial-types/finance-checker.png',
+  자산러: '/financial-types/aggressive-asset.png',
+}
+
 const resultLevel = computed(() => {
-  const score = result.value?.readiness_score || 0
-
-  if (score >= 85) {
-    return 'Lv.4'
+  const roadmapLevelLabel = getRoadmapLevelLabel()
+  if (roadmapLevelLabel) {
+    return roadmapLevelLabel
   }
 
-  if (score >= 70) {
-    return 'Lv.3'
-  }
-
-  if (score >= 50) {
-    return 'Lv.2'
-  }
-
-  return 'Lv.1'
+  return ''
 })
 
 const matchedType = computed(() => {
@@ -209,6 +250,21 @@ const matchedType = computed(() => {
 const typeIcon = computed(() => {
   return typeCopy[matchedType.value].icon
 })
+
+const typeImageSrc = computed(() => {
+  if (typeImageErrors.value[matchedType.value]) {
+    return ''
+  }
+
+  return typeCharacterImages[matchedType.value] || ''
+})
+
+const markTypeImageError = () => {
+  typeImageErrors.value = {
+    ...typeImageErrors.value,
+    [matchedType.value]: true,
+  }
+}
 
 const typeDescription = computed(() => {
   return typeCopy[matchedType.value].description
@@ -249,12 +305,15 @@ const profileScoreItems = computed(() => {
   })
 })
 
-onMounted(async () => {
+const loadLatestDiagnosis = async () => {
   const savedResult = localStorage.getItem('latestDiagnosisResult')
 
   if (savedResult) {
-    result.value = JSON.parse(savedResult)
-    return
+    try {
+      result.value = JSON.parse(savedResult)
+    } catch {
+      localStorage.removeItem('latestDiagnosisResult')
+    }
   }
 
   try {
@@ -270,5 +329,37 @@ onMounted(async () => {
   } catch (err) {
     console.error(err)
   }
+}
+
+const loadCachedRoadmap = () => {
+  const savedRoadmap = localStorage.getItem('latestRoadmap')
+
+  if (!savedRoadmap) {
+    return
+  }
+
+  try {
+    roadmap.value = JSON.parse(savedRoadmap)
+  } catch {
+    localStorage.removeItem('latestRoadmap')
+  }
+}
+
+const loadRoadmap = async () => {
+  try {
+    const response = await axios.get('http://localhost:8000/api/roadmap/', {
+      withCredentials: true,
+    })
+
+    roadmap.value = response.data.roadmap
+    localStorage.setItem('latestRoadmap', JSON.stringify(response.data.roadmap))
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+onMounted(async () => {
+  loadCachedRoadmap()
+  await Promise.all([loadLatestDiagnosis(), loadRoadmap()])
 })
 </script>

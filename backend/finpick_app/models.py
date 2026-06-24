@@ -13,6 +13,7 @@ class UserProfile(models.Model):
     saving_status = models.CharField(max_length=50, blank=True)
     invest_experience = models.CharField(max_length=50, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    password_changed_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return self.user.username
@@ -113,6 +114,34 @@ class ProductRecommendation(models.Model):
         ordering = ['id']
 
 
+class DailyFinancialTip(models.Model):
+    tip_date = models.DateField(unique=True)
+    message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-tip_date']
+
+    def __str__(self):
+        return f'{self.tip_date} - {self.message[:30]}'
+
+
+class AiProductRecommendation(models.Model):
+    recommendation_date = models.DateField()
+    financial_type = models.CharField(max_length=50)
+    deposit_product_ids = models.JSONField(default=list, blank=True)
+    stock_codes = models.JSONField(default=list, blank=True)
+    stock_items = models.JSONField(default=list, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-recommendation_date', 'financial_type']
+        unique_together = ('recommendation_date', 'financial_type')
+
+    def __str__(self):
+        return f'{self.recommendation_date} - {self.financial_type}'
+
+
 class DepositProduct(models.Model):
     PRODUCT_TYPE_CHOICES = [
         ('deposit', '예금'),
@@ -189,6 +218,29 @@ class UserFavoriteDepositProduct(models.Model):
 
     def __str__(self):
         return f'{self.user} - {self.product}'
+
+
+class UserFavoriteStock(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='favorite_stocks')
+    code = models.CharField(max_length=20)
+    isin_code = models.CharField(max_length=20, blank=True)
+    name = models.CharField(max_length=100)
+    market = models.CharField(max_length=20, blank=True)
+    base_date = models.CharField(max_length=8, blank=True)
+    current_price = models.BigIntegerField(default=0)
+    change = models.BigIntegerField(default=0)
+    change_rate = models.FloatField(default=0)
+    volume = models.BigIntegerField(default=0)
+    market_cap = models.BigIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-updated_at']
+        unique_together = ('user', 'code')
+
+    def __str__(self):
+        return f'{self.user} - {self.code}'
 
 
 class CommunityPost(models.Model):

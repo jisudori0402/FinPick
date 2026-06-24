@@ -1,7 +1,12 @@
 <template>
   <section class="card panel deposit-detail-page">
-    <RouterLink class="secondary-btn back-btn" to="/deposit-products">
-      목록으로
+    <RouterLink
+      class="secondary-btn back-btn icon-back-btn"
+      to="/deposit-products?category=deposit"
+      aria-label="예적금 전체상품 목록으로"
+      title="예적금 전체상품 목록으로"
+    >
+      ←
     </RouterLink>
 
     <div v-if="loading" class="status-box">
@@ -25,10 +30,9 @@
         <button
           class="primary-btn"
           type="button"
-          :disabled="product.is_subscribed"
-          @click="joinProduct"
+          @click="toggleInterestProduct"
         >
-          {{ product.is_subscribed ? '가입 목록에 추가됨' : '가입하기' }}
+          {{ product.is_subscribed ? '관심목록에서 제거하기' : '관심목록에 추가하기' }}
         </button>
 
         <button class="secondary-btn" type="button" @click="goToBankSearch">
@@ -97,22 +101,30 @@ const loadProduct = async () => {
   }
 }
 
-const joinProduct = async () => {
+const toggleInterestProduct = async () => {
   joinMessage.value = ''
 
   try {
-    const response = await axios.post(
-      `http://localhost:8000/api/deposit-products/${product.value.id}/join/`,
-      {},
-      {
-        withCredentials: true,
-      },
-    )
+    const requestConfig = {
+      withCredentials: true,
+    }
+    const url = `http://localhost:8000/api/deposit-products/${product.value.id}/join/`
+    const response = product.value.is_subscribed
+      ? await axios.delete(url, requestConfig)
+      : await axios.post(
+        url,
+        {},
+        requestConfig,
+      )
 
-    product.value.is_subscribed = response.data.is_subscribed
+    product.value = {
+      ...product.value,
+      ...response.data.product,
+      is_subscribed: response.data.is_subscribed,
+    }
     joinMessage.value = response.data.message
   } catch (err) {
-    joinMessage.value = err.response?.data?.message || '가입 목록에 추가하지 못했습니다.'
+    joinMessage.value = err.response?.data?.message || '관심목록을 변경하지 못했습니다.'
     console.error(err)
   }
 }

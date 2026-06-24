@@ -2,9 +2,12 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    path("api/ai/test/", views.api_ai_test),
+    path("api/ai/product-recommendations/", views.api_ai_product_recommendations),
     path("api/dashboard/", views.dashboard_api),
     path("api/login/", views.login_api),
     path("api/logout/", views.logout_api),
+    path("api/password-change/", views.password_change_api),
     path("api/session/", views.session_api),
     path("api/signup/", views.signup_api),
     path("api/test/", views.test_api),
@@ -18,6 +21,8 @@ urlpatterns = [
     path('api/roadmap/', views.api_roadmap, name='api_roadmap'),
     path('api/missions/<int:mission_id>/toggle/', views.api_user_mission, name='api_user_mission'),
     path('api/products/', views.api_products, name='api_products'),
+    path('api/youtube/search/', views.api_youtube_search, name='api_youtube_search'),
+    path('api/youtube/videos/<str:video_id>/', views.api_youtube_detail, name='api_youtube_detail'),
     path('api/profile/', views.api_profile, name='api_profile'),
     path('api/community/posts/', views.api_community_posts, name='api_community_posts'),
     path('api/community/posts/<int:post_id>/', views.api_community_post_detail, name='api_community_post_detail'),
@@ -29,6 +34,8 @@ urlpatterns = [
     path('api/deposit-products/<int:product_id>/favorite/', views.api_favorite_deposit_product_toggle, name='api_favorite_deposit_product_toggle'),
     path('api/favorite-deposit-products/', views.api_favorite_deposit_products, name='api_favorite_deposit_products'),
     path('api/stocks/', views.api_stocks, name='api_stocks'),
+    path('api/stocks/<str:stock_code>/', views.api_stock_detail, name='api_stock_detail'),
+    path('api/stocks/<str:stock_code>/favorite/', views.api_favorite_stock_toggle, name='api_favorite_stock_toggle'),
     path('api/map-config/', views.api_map_config, name='api_map_config'),
     path('api/bank-route/', views.api_bank_route, name='api_bank_route'),
     path('api/spot-prices/', views.api_spot_prices, name='api_spot_prices'),

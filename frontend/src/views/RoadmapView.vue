@@ -33,11 +33,16 @@
     </div>
 
     <template v-else>
-      <div class="roadmap-comment-card">
-        <span class="comment-bubble" aria-hidden="true">💬</span>
+      <div class="roadmap-next-card">
+        <div class="target-icon" aria-hidden="true">◎</div>
         <div>
-          <h2>FinPick 코멘트</h2>
-          <p>{{ roadmap.comment }}</p>
+          <span>다음 추천 활동</span>
+          <h2>{{ nextMissionTitle }}</h2>
+          <p>{{ nextMissionDescription }}</p>
+        </div>
+        <div class="road-visual" aria-hidden="true">
+          <span></span>
+          <strong></strong>
         </div>
       </div>
 
@@ -93,16 +98,11 @@
         </article>
       </div>
 
-      <div class="roadmap-next-card">
-        <div class="target-icon" aria-hidden="true">◎</div>
+      <div class="roadmap-comment-card">
+        <span class="comment-bubble" aria-hidden="true">💬</span>
         <div>
-          <span>다음 추천 활동</span>
-          <h2>{{ nextMissionTitle }}</h2>
-          <p>{{ nextMissionDescription }}</p>
-        </div>
-        <div class="road-visual" aria-hidden="true">
-          <span></span>
-          <strong></strong>
+          <h2>FinPick 코멘트</h2>
+          <p>{{ roadmap.comment }}</p>
         </div>
       </div>
 
@@ -129,6 +129,12 @@ const roadmap = ref(null)
 const loading = ref(true)
 const error = ref('')
 const togglingMissionId = ref(null)
+
+const syncRoadmapCache = () => {
+  if (roadmap.value) {
+    localStorage.setItem('latestRoadmap', JSON.stringify(roadmap.value))
+  }
+}
 
 const activeLevel = computed(() => {
   return roadmap.value?.levels?.find((level) => !level.is_locked && !isLevelCompleted(level))
@@ -165,6 +171,7 @@ const loadRoadmap = async () => {
     })
 
     roadmap.value = response.data.roadmap
+    syncRoadmapCache()
   } catch (err) {
     error.value = err.response?.data?.message || '로드맵을 불러오지 못했습니다.'
     console.error(err)
@@ -187,10 +194,12 @@ const toggleMission = async (missionId) => {
     )
 
     roadmap.value = response.data.roadmap
+    syncRoadmapCache()
   } catch (err) {
     error.value = err.response?.data?.message || '미션 상태를 변경하지 못했습니다.'
     if (err.response?.data?.roadmap) {
       roadmap.value = err.response.data.roadmap
+      syncRoadmapCache()
     }
     console.error(err)
   } finally {

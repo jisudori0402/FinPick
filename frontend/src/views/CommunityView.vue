@@ -6,22 +6,22 @@
       </button>
 
       <nav class="community-side-nav" aria-label="커뮤니티 메뉴">
-        <button class="active" type="button">
-          <span>🔥</span>
-          인기 주제
-        </button>
-        <button type="button" @click="scrollToVideos">
+        <button
+          type="button"
+          :class="{ active: activeSection === 'youtube' }"
+          @click="showYoutube"
+        >
           <span>▣</span>
-          유튜브
+          인기 영상
           <em>NEW</em>
         </button>
-        <button type="button" @click="scrollToBoard">
+        <button
+          type="button"
+          :class="{ active: activeSection === 'board' }"
+          @click="showBoard"
+        >
           <span>☷</span>
-          자유 게시판
-        </button>
-        <button type="button" @click="scrollToBoard">
-          <span>☏</span>
-          질문 & 답변
+          게시판
         </button>
       </nav>
 
@@ -31,24 +31,24 @@
         <div class="youtube-mascot" aria-hidden="true">
           <span>▶</span>
         </div>
-        <button type="button" @click="scrollToVideos">
+        <button type="button" @click="showYoutube">
           유튜브 바로가기
         </button>
       </div>
     </aside>
 
     <div class="community-main">
-      <section ref="videosSection" class="video-section">
+      <section v-if="activeSection === 'youtube'" class="video-section">
         <div class="community-head">
           <div>
-            <h1>인기 주제 유튜브</h1>
-            <p>지금 가장 핫한 금융 주제의 영상을 모아봤어요!</p>
+            <h1>인기 영상</h1>
+            <p>관심 있는 금융 주제의 영상을 검색해보세요.</p>
           </div>
 
-          <label class="community-search">
-            <input placeholder="검색어를 입력하세요" disabled />
-            <span aria-hidden="true">⌕</span>
-          </label>
+          <form class="community-search youtube-search" @submit.prevent="searchYoutubeVideos">
+            <input v-model="youtubeQuery" placeholder="관심 종목 또는 금융 키워드 검색" />
+            <button type="submit" :disabled="youtubeLoading">검색</button>
+          </form>
         </div>
 
         <div class="topic-tabs">
@@ -57,31 +57,44 @@
             :key="topic"
             type="button"
             :class="{ active: selectedTopic === topic }"
-            @click="selectedTopic = topic"
+            @click="selectVideoTopic(topic)"
           >
             {{ topic }}
           </button>
         </div>
 
+        <div v-if="youtubeLoading" class="status-box">
+          영상을 검색하는 중입니다.
+        </div>
+
+        <div v-else-if="youtubeError" class="status-box error">
+          {{ youtubeError }}
+        </div>
+
         <div class="video-grid">
-          <article v-for="video in filteredVideos" :key="video.title" class="video-card">
-            <div class="video-thumb" :class="video.theme">
-              <strong>{{ video.headline }}</strong>
-              <span>{{ video.duration }}</span>
+          <article
+            v-for="video in youtubeVideos"
+            :key="video.video_id"
+            class="video-card"
+            @click="openVideo(video.video_id)"
+          >
+            <div class="video-thumb youtube-thumb">
+              <img v-if="video.thumbnail" :src="video.thumbnail" :alt="video.title" />
+              <strong v-else>{{ video.title }}</strong>
+              <span>▶</span>
             </div>
             <h2>{{ video.title }}</h2>
-            <p>{{ video.channel }}</p>
-            <small>조회수 {{ video.views }} · {{ video.age }}</small>
+            <p>{{ video.channel_title }}</p>
+            <small>{{ formatVideoDate(video.published_at) }}</small>
           </article>
         </div>
 
-        <button class="load-more-videos" type="button">
-          더 많은 영상 보기
-          <span>⌄</span>
-        </button>
+        <div v-if="!youtubeLoading && !youtubeVideos.length" class="empty-box community-empty">
+          검색 결과가 없습니다.
+        </div>
       </section>
 
-      <section ref="boardSection" class="community-board-section">
+      <section v-if="activeSection === 'board'" class="community-board-section only-board-section">
         <div class="board-header-row">
           <div>
             <h1>커뮤니티 게시판</h1>
@@ -102,7 +115,7 @@
           <div class="composer-actions">
             <span>{{ formMessage }}</span>
             <button class="primary-btn" type="submit" :disabled="submittingPost">
-              등록하기
+              {{ editingPostId ? '수정하기' : '등록하기' }}
             </button>
           </div>
         </form>
@@ -173,15 +186,47 @@
                   <span>{{ selectedPost.created_at }}</span>
                 </div>
 
+                <div v-if="selectedPost.can_edit" class="post-actions">
+                  <button class="secondary-btn" type="button" @click="startEditPost">
+                    수정
+                  </button>
+                  <button class="danger-btn" type="button" @click="deletePost">
+                    삭제
+                  </button>
+                </div>
+
                 <div class="comment-list">
                   <h3>댓글 {{ selectedPost.comments?.length || 0 }}</h3>
                   <div v-if="!selectedPost.comments?.length" class="comment-empty">
                     아직 댓글이 없습니다.
                   </div>
                   <article v-for="comment in selectedPost.comments" :key="comment.id" class="comment-item">
-                    <strong>{{ comment.author }}</strong>
-                    <p>{{ comment.content }}</p>
-                    <small>{{ comment.created_at }}</small>
+                    <div class="comment-head">
+                      <strong>{{ comment.author }}</strong>
+                      <small>{{ comment.created_at }}</small>
+                    </div>
+                    <template v-if="editingCommentId === comment.id">
+                      <textarea v-model="editingCommentContent" rows="3"></textarea>
+                      <div class="comment-actions">
+                        <button class="secondary-btn" type="button" @click="cancelEditComment">
+                          취소
+                        </button>
+                        <button class="primary-btn" type="button" @click="updateComment(comment)">
+                          저장
+                        </button>
+                      </div>
+                    </template>
+                    <template v-else>
+                      <p>{{ comment.content }}</p>
+                      <div v-if="comment.can_edit || comment.can_delete" class="comment-actions">
+                        <button v-if="comment.can_edit" class="secondary-btn" type="button" @click="startEditComment(comment)">
+                          수정
+                        </button>
+                        <button v-if="comment.can_delete" class="danger-btn" type="button" @click="deleteComment(comment)">
+                          삭제
+                        </button>
+                      </div>
+                    </template>
                   </article>
                 </div>
 
@@ -201,14 +246,22 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import axios from 'axios'
+
+const router = useRouter()
 
 const boards = ref([])
 const posts = ref([])
 const selectedBoard = ref('')
 const selectedPost = ref(null)
+const activeSection = ref('youtube')
 const selectedTopic = ref('전체')
+const youtubeQuery = ref('금융 투자')
+const youtubeVideos = ref([])
+const youtubeLoading = ref(false)
+const youtubeError = ref('')
 const loading = ref(true)
 const error = ref('')
 const showComposer = ref(false)
@@ -216,8 +269,9 @@ const submittingPost = ref(false)
 const submittingComment = ref(false)
 const formMessage = ref('')
 const commentContent = ref('')
-const videosSection = ref(null)
-const boardSection = ref(null)
+const editingPostId = ref(null)
+const editingCommentId = ref(null)
+const editingCommentContent = ref('')
 
 const postForm = ref({
   board: 'free',
@@ -227,96 +281,54 @@ const postForm = ref({
 
 const videoTopics = ['전체', '재테크 기초', '주식 투자', 'ETF', '절세 전략', '부동산', '연금·노후', '가격 관리']
 
-const videoItems = [
-  {
-    topic: '재테크 기초',
-    theme: 'mint',
-    headline: '재테크 첫걸음',
-    duration: '10:34',
-    title: '사회초년생 재테크, 지금부터 이렇게 시작하세요!',
-    channel: '돈 톡톡TV',
-    views: '12.3만회',
-    age: '2일 전',
-  },
-  {
-    topic: 'ETF',
-    theme: 'blue',
-    headline: 'ETF 투자',
-    duration: '8:45',
-    title: 'ETF 투자, 초보자가 꼭 알아야 할 5가지',
-    channel: '머니가이드',
-    views: '9.8만회',
-    age: '4일 전',
-  },
-  {
-    topic: '가격 관리',
-    theme: 'pink',
-    headline: '지출 습관',
-    duration: '7:32',
-    title: '월급 관리의 정석, 돈이 모이는 지출 습관 3가지',
-    channel: '재테크하는 제이',
-    views: '8.1만회',
-    age: '1주 전',
-  },
-  {
-    topic: '연금·노후',
-    theme: 'green',
-    headline: '연금저축 vs IRP',
-    duration: '9:12',
-    title: '연금저축 vs IRP, 어떻게 더 유리할까?',
-    channel: '연금연구소',
-    views: '6.7만회',
-    age: '1주 전',
-  },
-  {
-    topic: '주식 투자',
-    theme: 'line',
-    headline: '주식 초보가 반드시 알아야 할 투자 원칙 3가지',
-    duration: '11:08',
-    title: '주식 초보가 반드시 알아야 할 투자 원칙 3가지',
-    channel: '주식하는 친구',
-    views: '15.6만회',
-    age: '1주 전',
-  },
-  {
-    topic: '절세 전략',
-    theme: 'dark',
-    headline: 'ISA 계좌 완벽 정리!',
-    duration: '6:55',
-    title: 'ISA 계좌 완벽 정리! 혜택부터 활용법까지',
-    channel: '절세노트',
-    views: '7.2만회',
-    age: '2주 전',
-  },
-  {
-    topic: '부동산',
-    theme: 'house',
-    headline: '부동산 투자 지금 들어가도 괜찮을까?',
-    duration: '10:21',
-    title: '부동산 투자, 지금 들어가도 괜찮을까?',
-    channel: '부동산 인사이트',
-    views: '11.4만회',
-    age: '2주 전',
-  },
-  {
-    topic: '재테크 기초',
-    theme: 'news',
-    headline: '경제 뉴스 쉽게 이해하기',
-    duration: '5:49',
-    title: '하루 10분! 경제 뉴스 쉽게 이해하기',
-    channel: '경제 읽어주는 남자',
-    views: '5.3만회',
-    age: '3주 전',
-  },
-]
-
-const filteredVideos = computed(() => {
-  if (selectedTopic.value === '전체') {
-    return videoItems
+const searchYoutubeVideos = async () => {
+  const query = youtubeQuery.value.trim()
+  if (!query) {
+    youtubeVideos.value = []
+    youtubeError.value = '검색어를 입력해 주세요.'
+    return
   }
 
-  return videoItems.filter((video) => video.topic === selectedTopic.value)
-})
+  youtubeLoading.value = true
+  youtubeError.value = ''
+
+  try {
+    const response = await axios.get('http://localhost:8000/api/youtube/search/', {
+      params: { q: query },
+      withCredentials: true,
+    })
+
+    youtubeVideos.value = response.data.videos || []
+  } catch (err) {
+    youtubeVideos.value = []
+    youtubeError.value = err.response?.data?.message || '영상을 검색하지 못했습니다.'
+    console.error(err)
+  } finally {
+    youtubeLoading.value = false
+  }
+}
+
+const selectVideoTopic = (topic) => {
+  selectedTopic.value = topic
+  youtubeQuery.value = topic === '전체' ? '금융 투자' : topic
+  searchYoutubeVideos()
+}
+
+const openVideo = (videoId) => {
+  if (!videoId) {
+    return
+  }
+
+  router.push(`/community/videos/${videoId}`)
+}
+
+const formatVideoDate = (dateText) => {
+  if (!dateText) {
+    return '-'
+  }
+
+  return new Date(dateText).toLocaleDateString('ko-KR')
+}
 
 const loadPosts = async () => {
   loading.value = true
@@ -374,8 +386,11 @@ const selectPost = (post) => {
 }
 
 const toggleComposer = () => {
+  activeSection.value = 'board'
   showComposer.value = !showComposer.value
-  scrollToBoard()
+  if (!showComposer.value) {
+    cancelEditPost()
+  }
 }
 
 const createPost = async () => {
@@ -388,13 +403,17 @@ const createPost = async () => {
   formData.append('content', postForm.value.content)
 
   try {
-    const response = await axios.post('http://localhost:8000/api/community/posts/', formData, {
+    const url = editingPostId.value
+      ? `http://localhost:8000/api/community/posts/${editingPostId.value}/`
+      : 'http://localhost:8000/api/community/posts/'
+    const response = await axios.post(url, formData, {
       withCredentials: true,
     })
 
     postForm.value.title = ''
     postForm.value.content = ''
-    formMessage.value = '게시글이 등록되었습니다.'
+    formMessage.value = editingPostId.value ? '게시글이 수정되었습니다.' : '게시글이 등록되었습니다.'
+    editingPostId.value = null
     showComposer.value = false
     selectedPost.value = response.data.post
     await loadPosts()
@@ -403,6 +422,47 @@ const createPost = async () => {
     console.error(err)
   } finally {
     submittingPost.value = false
+  }
+}
+
+const startEditPost = () => {
+  if (!selectedPost.value?.can_edit) {
+    return
+  }
+
+  activeSection.value = 'board'
+  showComposer.value = true
+  editingPostId.value = selectedPost.value.id
+  postForm.value = {
+    board: selectedPost.value.board,
+    title: selectedPost.value.title,
+    content: selectedPost.value.content,
+  }
+  formMessage.value = ''
+}
+
+const cancelEditPost = () => {
+  editingPostId.value = null
+  postForm.value.title = ''
+  postForm.value.content = ''
+  formMessage.value = ''
+}
+
+const deletePost = async () => {
+  if (!selectedPost.value?.can_edit) {
+    return
+  }
+
+  try {
+    await axios.delete(`http://localhost:8000/api/community/posts/${selectedPost.value.id}/`, {
+      withCredentials: true,
+    })
+
+    selectedPost.value = null
+    await loadPosts()
+  } catch (err) {
+    error.value = err.response?.data?.message || '게시글을 삭제하지 못했습니다.'
+    console.error(err)
   }
 }
 
@@ -436,15 +496,71 @@ const createComment = async () => {
   }
 }
 
-const scrollToVideos = () => {
-  videosSection.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+const showYoutube = () => {
+  activeSection.value = 'youtube'
+  showComposer.value = false
 }
 
-const scrollToBoard = () => {
-  boardSection.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+const startEditComment = (comment) => {
+  if (!comment.can_edit) {
+    return
+  }
+
+  editingCommentId.value = comment.id
+  editingCommentContent.value = comment.content
+}
+
+const cancelEditComment = () => {
+  editingCommentId.value = null
+  editingCommentContent.value = ''
+}
+
+const updateComment = async (comment) => {
+  if (!comment.can_edit) {
+    return
+  }
+
+  const formData = new FormData()
+  formData.append('content', editingCommentContent.value)
+
+  try {
+    await axios.post(`http://localhost:8000/api/community/comments/${comment.id}/`, formData, {
+      withCredentials: true,
+    })
+
+    cancelEditComment()
+    await loadPostDetail(selectedPost.value.id)
+    await loadPosts()
+  } catch (err) {
+    error.value = err.response?.data?.message || '댓글을 수정하지 못했습니다.'
+    console.error(err)
+  }
+}
+
+const deleteComment = async (comment) => {
+  if (!comment.can_delete) {
+    return
+  }
+
+  try {
+    await axios.delete(`http://localhost:8000/api/community/comments/${comment.id}/`, {
+      withCredentials: true,
+    })
+
+    await loadPostDetail(selectedPost.value.id)
+    await loadPosts()
+  } catch (err) {
+    error.value = err.response?.data?.message || '댓글을 삭제하지 못했습니다.'
+    console.error(err)
+  }
+}
+
+const showBoard = () => {
+  activeSection.value = 'board'
 }
 
 onMounted(() => {
+  searchYoutubeVideos()
   loadPosts()
 })
 </script>

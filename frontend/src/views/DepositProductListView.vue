@@ -46,6 +46,10 @@
       </div>
 
       <div v-if="productCategory === 'recommended'" class="recommended-products">
+        <div v-if="aiRecommendationMessage" class="recommendation-ai-note">
+          {{ aiRecommendationMessage }}
+        </div>
+
         <div class="recommend-card">
           <div class="recommend-card-head">
             <div class="recommend-icon piggy"></div>
@@ -98,6 +102,7 @@
               v-for="item in topStockProducts"
               :key="item.code || item.isin_code"
               class="recommend-row"
+              @click="openStockProduct(item.code)"
             >
               <span class="row-icon stock-icon">{{ item.name?.slice(0, 1) || '주' }}</span>
               <div>
@@ -209,6 +214,10 @@
             표시할 주식 종목이 없습니다.
           </div>
 
+          <p v-if="productCategory === 'stock' && stockMessage" class="lock-note">
+            {{ stockMessage }}
+          </p>
+
           <div v-if="productCategory === 'deposit'" class="product-list product-grid-list">
             <article
               v-for="item in depositProducts"
@@ -246,7 +255,18 @@
               v-for="item in stockProducts"
               :key="item.code || item.isin_code"
               class="product product-card product-list-card stock-card"
+              @click="openStockProduct(item.code)"
             >
+              <button
+                class="favorite-btn"
+                :class="{ active: item.is_favorite }"
+                type="button"
+                :title="item.is_favorite ? '관심상품 해제' : '관심상품 추가'"
+                @click.stop="toggleFavoriteStock(item)"
+              >
+                {{ item.is_favorite ? '★' : '☆' }}
+              </button>
+
               <small>{{ item.market || '주식' }}</small>
               <h3>{{ item.name }}</h3>
               <p>{{ item.code }}</p>
@@ -348,13 +368,65 @@
             </div>
           </div>
 
-          <div v-if="productCategory === 'favorites'" class="favorite-preview-panel">
+          <div
+            v-if="productCategory === 'favorites' && !filteredFavoriteItems.length"
+            class="favorite-preview-panel"
+          >
             <div class="favorite-empty-icon">♡</div>
             <h2>관심상품</h2>
-            <p>관심상품 기능은 다음 단계에서 연결할 예정이에요. 지금은 화면만 먼저 준비해두었습니다.</p>
+            <p>별표를 누르거나 상세 화면에서 관심목록에 추가한 상품이 여기에 표시됩니다.</p>
             <button class="primary-btn" type="button" @click="setProductCategory('recommended')">
               추천 상품 둘러보기
             </button>
+          </div>
+
+          <div
+            v-if="productCategory === 'favorites' && filteredFavoriteItems.length"
+            class="product-list product-grid-list"
+          >
+            <article
+              v-for="item in filteredFavoriteItems"
+              :key="item.favorite_key"
+              class="product product-card product-list-card"
+              :class="{ 'stock-card': item.favorite_type === 'stock' }"
+              @click="openFavoriteItem(item)"
+            >
+              <button
+                class="favorite-btn"
+                :class="{ active: item.favorite_type === 'stock' ? item.is_favorite : item.is_favorite || item.is_subscribed }"
+                type="button"
+                title="관심상품 해제"
+                @click.stop="item.favorite_type === 'stock' ? toggleFavoriteStock(item) : removeFavoriteDepositItem(item)"
+              >
+                {{ item.favorite_type === 'stock' ? item.is_favorite ? '★' : '☆' : '★' }}
+              </button>
+
+              <small>{{ item.favorite_type === 'stock' ? item.market || '주식' : item.product_type === 'deposit' ? '예금' : '적금' }}</small>
+              <h3>{{ item.favorite_type === 'stock' ? item.name : item.product_name }}</h3>
+              <p>{{ item.favorite_type === 'stock' ? item.code : item.financial_company_name }}</p>
+
+              <div class="rate">
+                <template v-if="item.favorite_type === 'stock'">
+                  현재가 <span>{{ formatWon(item.current_price) }}</span>
+                </template>
+                <template v-else>
+                  최고 <span>{{ item.max_interest_rate || item.interest_rate || '-' }}%</span>
+                </template>
+              </div>
+
+              <div class="product-meta">
+                <template v-if="item.favorite_type === 'stock'">
+                  <span :class="{ positive: item.change_rate > 0, negative: item.change_rate < 0 }">
+                    등락률 {{ formatRate(item.change_rate) }}
+                  </span>
+                  <span>기준일 {{ formatStockDate(item.base_date) }}</span>
+                </template>
+                <template v-else>
+                  <span>{{ item.best_term ? item.best_term + '개월' : '기간 정보 없음' }}</span>
+                  <span>{{ item.is_subscribed ? '관심목록 추가됨' : '별표 관심상품' }}</span>
+                </template>
+              </div>
+            </article>
           </div>
         </template>
       </template>
@@ -364,14 +436,24 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 
+const route = useRoute()
 const router = useRouter()
 
-const productCategory = ref('recommended')
+const allowedProductCategories = ['recommended', 'deposit', 'stock', 'spot', 'favorites']
+const initialCategory = allowedProductCategories.includes(route.query.category)
+  ? route.query.category
+  : 'recommended'
+
+const productCategory = ref(initialCategory)
 const depositProducts = ref([])
+const favoriteProducts = ref([])
+const favoriteStocks = ref([])
 const stockProducts = ref([])
+const aiDepositProducts = ref([])
+const aiStockProducts = ref([])
 const productCompanies = ref([])
 const stockMarkets = ref([])
 const recommendations = ref([])
@@ -379,6 +461,8 @@ const loading = ref(false)
 const error = ref('')
 const spotPrices = ref([])
 const spotMessage = ref('')
+const stockMessage = ref('')
+const aiRecommendationMessage = ref('')
 let depositRequestSeq = 0
 let stockRequestSeq = 0
 
@@ -456,6 +540,10 @@ const activeSearchKeyword = computed({
       return stockFilters.value.q
     }
 
+    if (productCategory.value === 'favorites') {
+      return productFilters.value.q
+    }
+
     return ''
   },
   set(value) {
@@ -466,11 +554,68 @@ const activeSearchKeyword = computed({
     if (productCategory.value === 'stock') {
       stockFilters.value.q = value
     }
+
+    if (productCategory.value === 'favorites') {
+      productFilters.value.q = value
+    }
   },
 })
 
-const topDepositProducts = computed(() => depositProducts.value.slice(0, 3))
-const topStockProducts = computed(() => stockProducts.value.slice(0, 3))
+const filteredFavoriteProducts = computed(() => {
+  const keyword = productFilters.value.q.trim().toLowerCase()
+  if (!keyword) {
+    return favoriteProducts.value
+  }
+
+  return favoriteProducts.value.filter((item) => {
+    return (
+      item.product_name.toLowerCase().includes(keyword) ||
+      item.financial_company_name.toLowerCase().includes(keyword)
+    )
+  })
+})
+
+const favoriteDepositItems = computed(() => {
+  return favoriteProducts.value.map((item) => ({
+    ...item,
+    favorite_type: 'deposit',
+    favorite_key: `deposit-${item.id}`,
+  }))
+})
+
+const favoriteStockItems = computed(() => {
+  return favoriteStocks.value.map((item) => ({
+    ...item,
+    favorite_type: 'stock',
+    favorite_key: `stock-${item.code}`,
+  }))
+})
+
+const filteredFavoriteItems = computed(() => {
+  const keyword = productFilters.value.q.trim().toLowerCase()
+  const items = [...favoriteDepositItems.value, ...favoriteStockItems.value]
+  if (!keyword) {
+    return items
+  }
+
+  return items.filter((item) => {
+    if (item.favorite_type === 'stock') {
+      return item.name.toLowerCase().includes(keyword) || item.code.toLowerCase().includes(keyword)
+    }
+
+    return (
+      item.product_name.toLowerCase().includes(keyword) ||
+      item.financial_company_name.toLowerCase().includes(keyword)
+    )
+  })
+})
+
+const topDepositProducts = computed(() => {
+  return aiDepositProducts.value.length ? aiDepositProducts.value : depositProducts.value.slice(0, 3)
+})
+const topStockProducts = computed(() => {
+  return aiStockProducts.value.length ? aiStockProducts.value : stockProducts.value.slice(0, 3)
+})
 
 const spotAssetName = computed(() => {
   return spotAssetLabels[spotFilters.value.asset] || '현물'
@@ -639,6 +784,7 @@ const loadStockProducts = async (overrides = {}) => {
   const requestId = ++stockRequestSeq
   loading.value = productCategory.value !== 'recommended'
   error.value = ''
+  stockMessage.value = ''
 
   try {
     const response = await axios.get(
@@ -654,6 +800,7 @@ const loadStockProducts = async (overrides = {}) => {
 
     stockProducts.value = response.data.stocks || []
     stockMarkets.value = response.data.markets || []
+    stockMessage.value = response.data.is_fallback ? response.data.message || '' : ''
   } catch (err) {
     if (requestId !== stockRequestSeq) {
       return
@@ -682,16 +829,47 @@ const onUnifiedSearch = (event) => {
     stockFilters.value.q = q
     loadStockProducts({ q })
   }
+
+  if (productCategory.value === 'favorites') {
+    productFilters.value.q = q
+  }
 }
 
 const loadRecommendations = async () => {
   try {
-    const response = await axios.get('http://localhost:8000/api/products/', {
+    aiRecommendationMessage.value = 'AI가 금융 유형에 맞는 상품을 추천하고 있어요.'
+
+    const response = await axios.get('http://localhost:8000/api/ai/product-recommendations/', {
       withCredentials: true,
     })
-    recommendations.value = response.data.products || []
+
+    aiDepositProducts.value = response.data.deposits || []
+    aiStockProducts.value = response.data.stocks || []
+    aiRecommendationMessage.value = response.data.cached
+      ? `${response.data.financial_type} 유형 기준 오늘의 추천 상품이에요.`
+      : `${response.data.financial_type} 유형에 맞춰 AI가 추천했어요.`
   } catch (err) {
+    aiRecommendationMessage.value = err.response?.data?.message || 'AI 추천을 불러오지 못해 기본 상품을 보여드려요.'
     console.error(err)
+  }
+}
+
+const loadFavoriteProducts = async () => {
+  loading.value = productCategory.value === 'favorites'
+  error.value = ''
+
+  try {
+    const response = await axios.get('http://localhost:8000/api/favorite-deposit-products/', {
+      withCredentials: true,
+    })
+
+    favoriteProducts.value = response.data.products || []
+    favoriteStocks.value = response.data.stocks || []
+  } catch (err) {
+    error.value = err.response?.data?.message || '관심상품을 불러오지 못했습니다.'
+    console.error(err)
+  } finally {
+    loading.value = false
   }
 }
 
@@ -742,6 +920,46 @@ const resetSpotPeriod = async () => {
   await loadSpotPrices()
 }
 
+const toggleFavoriteStock = async (item) => {
+  try {
+    const response = await axios.post(
+      `http://localhost:8000/api/stocks/${item.code}/favorite/`,
+      {
+        code: item.code,
+        isin_code: item.isin_code,
+        name: item.name,
+        market: item.market,
+        base_date: item.base_date,
+        current_price: item.current_price,
+        change: item.change,
+        change_rate: item.change_rate,
+        volume: item.volume,
+        market_cap: item.market_cap,
+      },
+      {
+        withCredentials: true,
+      },
+    )
+
+    const updatedStock = response.data.stock
+    stockProducts.value = stockProducts.value.map((stock) => {
+      return stock.code === item.code ? { ...stock, is_favorite: response.data.is_favorite } : stock
+    })
+
+    if (response.data.is_favorite) {
+      favoriteStocks.value = [
+        updatedStock,
+        ...favoriteStocks.value.filter((stock) => stock.code !== updatedStock.code),
+      ]
+    } else {
+      favoriteStocks.value = favoriteStocks.value.filter((stock) => stock.code !== item.code)
+    }
+  } catch (err) {
+    error.value = err.response?.data?.message || '관심상품을 변경하지 못했습니다.'
+    console.error(err)
+  }
+}
+
 const toggleFavoriteProduct = async (item) => {
   try {
     const response = await axios.post(
@@ -756,14 +974,78 @@ const toggleFavoriteProduct = async (item) => {
     depositProducts.value = depositProducts.value.map((product) => {
       return product.id === updatedProduct.id ? updatedProduct : product
     })
+
+    favoriteProducts.value = favoriteProducts.value
+      .map((product) => (product.id === updatedProduct.id ? updatedProduct : product))
+      .filter((product) => product.is_favorite || product.is_subscribed)
+
+    if ((updatedProduct.is_favorite || updatedProduct.is_subscribed) && !favoriteProducts.value.some((product) => product.id === updatedProduct.id)) {
+      favoriteProducts.value = [updatedProduct, ...favoriteProducts.value]
+    }
   } catch (err) {
     error.value = err.response?.data?.message || '관심상품을 변경하지 못했습니다.'
     console.error(err)
   }
 }
 
+const removeFavoriteDepositItem = async (item) => {
+  try {
+    if (item.is_favorite) {
+      await axios.post(
+        `http://localhost:8000/api/deposit-products/${item.id}/favorite/`,
+        {},
+        {
+          withCredentials: true,
+        },
+      )
+    }
+
+    if (item.is_subscribed) {
+      await axios.delete(
+        `http://localhost:8000/api/deposit-products/${item.id}/join/`,
+        {
+          withCredentials: true,
+        },
+      )
+    }
+
+    favoriteProducts.value = favoriteProducts.value.filter((product) => product.id !== item.id)
+    depositProducts.value = depositProducts.value.map((product) => {
+      if (product.id !== item.id) {
+        return product
+      }
+
+      return {
+        ...product,
+        is_favorite: false,
+        is_subscribed: false,
+      }
+    })
+  } catch (err) {
+    error.value = err.response?.data?.message || '관심상품을 제거하지 못했습니다.'
+    console.error(err)
+  }
+}
+
 const openDepositProduct = (productId) => {
   router.push(`/deposit-products/${productId}`)
+}
+
+const openStockProduct = (stockCode) => {
+  if (!stockCode) {
+    return
+  }
+
+  router.push(`/stocks/${stockCode}`)
+}
+
+const openFavoriteItem = (item) => {
+  if (item.favorite_type === 'stock') {
+    openStockProduct(item.code)
+    return
+  }
+
+  openDepositProduct(item.id)
 }
 
 const setProductCategory = (category) => {
@@ -780,6 +1062,10 @@ const setProductCategory = (category) => {
 
   if (category === 'spot') {
     loadSpotPrices()
+  }
+
+  if (category === 'favorites') {
+    loadFavoriteProducts()
   }
 }
 
@@ -809,5 +1095,10 @@ onMounted(() => {
   loadDepositProducts()
   loadStockProducts()
   loadRecommendations()
+  loadFavoriteProducts()
+
+  if (productCategory.value === 'spot') {
+    loadSpotPrices()
+  }
 })
 </script>

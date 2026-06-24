@@ -15,10 +15,6 @@
       </nav>
 
       <div class="header-actions">
-        <button class="icon-button" type="button" aria-label="알림">
-          <span aria-hidden="true">!</span>
-        </button>
-
         <template v-if="isLoggedIn">
           <RouterLink class="mini-link" to="/dashboard">내 정보</RouterLink>
           <button class="login-button" type="button" @click="logout">로그아웃</button>

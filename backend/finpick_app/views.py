@@ -5,11 +5,12 @@ from pathlib import Path
 from urllib.parse import unquote
 from zipfile import ZipFile
 import xml.etree.ElementTree as ET
+from html import unescape
 import json
 from django.contrib.auth import get_user_model
 
 from django.contrib import messages
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.conf import settings
@@ -19,8 +20,86 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 import requests
 from django.contrib.auth import authenticate, login
+from openai import APIConnectionError, AuthenticationError, OpenAI, OpenAIError
+
+def api_ai_test(request):
+    today = timezone.localdate()
+    saved_tip = DailyFinancialTip.objects.filter(tip_date=today).first()
+
+    if saved_tip:
+        return JsonResponse({
+            "message": saved_tip.message,
+            "date": saved_tip.tip_date.isoformat(),
+            "cached": True,
+        })
+
+    if not settings.GMS_API_KEY:
+        return JsonResponse({
+            "message": "GMS_API_KEY가 설정되어 있지 않습니다."
+        }, status=500)
+
+    if not settings.GMS_OPENAI_BASE_URL:
+        return JsonResponse({
+            "message": "GMS를 통해 OpenAI를 호출하려면 GMS_OPENAI_BASE_URL이 필요합니다."
+        }, status=500)
+
+    client = OpenAI(
+        api_key=settings.GMS_API_KEY,
+        base_url=settings.GMS_OPENAI_BASE_URL,
+    )
+
+    try:
+        response = client.chat.completions.create(
+            model=settings.GMS_OPENAI_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "너는 FinPick 서비스의 금융 콘텐츠를 작성하는 도우미야.",
+                },
+                {
+                    "role": "user",
+                    "content": "FinPick 서비스에 어울리는 짧은 금융 한마디를 한 문장으로 작성해줘.",
+                },
+            ],
+            temperature=0.8,
+        )
+    except AuthenticationError:
+        return JsonResponse({
+            "message": "GMS_API_KEY가 유효하지 않거나 GMS OpenAI 게이트웨이 권한이 없습니다."
+        }, status=502)
+    except APIConnectionError:
+        return JsonResponse({
+            "message": "GMS OpenAI 게이트웨이에 연결하지 못했습니다. GMS_OPENAI_BASE_URL을 확인해 주세요."
+        }, status=502)
+    except OpenAIError:
+        return JsonResponse({
+            "message": "GMS OpenAI 호출에 실패했습니다. 모델명과 GMS 게이트웨이 설정을 확인해 주세요."
+        }, status=502)
+
+    output_text = (response.choices[0].message.content or '').strip().strip('"“”')
+
+    if not output_text:
+        return JsonResponse({
+            "message": "GMS OpenAI 응답을 받았지만 텍스트를 찾지 못했습니다."
+        }, status=502)
+
+    DailyFinancialTip.objects.update_or_create(
+        tip_date=today,
+        defaults={"message": output_text},
+    )
+
+    return JsonResponse({
+        "message": output_text,
+        "date": today.isoformat(),
+        "cached": False,
+    })
+
+
+
 
 from .models import (
+    AiProductRecommendation,
+    DailyFinancialTip,
     DepositProduct,
     DiagnosisResult,
     ProductRecommendation,
@@ -33,7 +112,65 @@ from .models import (
     CommunityPost,
     CommunityComment,
     UserFavoriteDepositProduct,
+    UserFavoriteStock,
 )
+
+
+FINANCIAL_TYPE_RECOMMENDATION_PROMPT = """
+너는 지금부터 6가지의 금융 유형을 보고 각 유형에 알맞게 예적금 상품 3개, 그리고 주식 상품 3개를 추천하는 AI 어시스턴트야.
+반드시 내가 제공하는 예적금 후보와 주식 후보 안에서만 골라야 해.
+
+# 금융 유형 판정
+
+## 유형 판정 우선순위
+동시에 여러 유형 조건에 해당하는 경우 아래 우선순위를 적용한다.
+
+1. 🐻 재정 점검러
+2. 🦁 공격형 자산러
+3. 🐯 성장형 투자러
+4. 🐢 안정형 저축러
+5. 🐿 계획형 목돈러
+6. 🦊 똑똑한 소비러
+
+## 🐻 재정 점검러
+조건
+- 자산 1000만원 미만
+- 부채 있음
+- 금융 준비도 60점 미만
+
+## 🦁 공격형 자산러
+조건
+- 투자성향 = 공격적 투자
+- 자산 1000만원 이상
+
+## 🐯 성장형 투자러
+조건
+- 금융목표 = 투자 시작
+- 투자성향 = 위험 감수 가능 이상
+
+## 🐢 안정형 저축러
+조건
+- 소비성향 = 저축 우선
+- 투자성향 = 원금 손실 싫음
+
+## 🐿 계획형 목돈러
+조건
+- 금융목표 = 결혼 자금 또는 내 집 마련 또는 여행 자금
+
+## 🦊 똑똑한 소비러
+조건
+- 소비성향 = 필요한 만큼 사용 또는 계획적 소비
+
+각 유형에게 알맞은 예적금 상품과 주식 상품을 추천해줘.
+특히 주식 상품은 현재가, 등락률, 거래량, 시가총액을 함께 고려해줘.
+
+응답은 설명 없이 JSON만 반환해.
+형식:
+{
+  "deposit_product_ids": [1, 2, 3],
+  "stock_codes": ["005930", "000660", "035420"]
+}
+"""
 
 
 XLSX_NS = {'a': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
@@ -421,6 +558,8 @@ def get_user_roadmap(user):
     comment = ROADMAP_COMMENTS.get(type_code, ROADMAP_COMMENTS['🐿 계획형 목돈러'])
     return {
         'type_code': type_code,
+        'current_level': unlocked_level,
+        'current_level_label': f'Lv.{unlocked_level}',
         'progress': progress,
         'completed_count': completed_count,
         'total_count': total_count,
@@ -568,13 +707,124 @@ def api_products(request):
     return JsonResponse({'products': products})
 
 
+def serialize_youtube_search_item(item):
+    snippet = item.get('snippet', {})
+    thumbnails = snippet.get('thumbnails', {})
+    video_id = item.get('id', {}).get('videoId', '')
+    return {
+        'video_id': video_id,
+        'title': unescape(snippet.get('title', '')),
+        'channel_title': unescape(snippet.get('channelTitle', '')),
+        'published_at': snippet.get('publishedAt', ''),
+        'description': unescape(snippet.get('description', '')),
+        'thumbnail': (
+            thumbnails.get('high', {}).get('url')
+            or thumbnails.get('medium', {}).get('url')
+            or thumbnails.get('default', {}).get('url')
+            or ''
+        ),
+    }
+
+
+def serialize_youtube_detail_item(item):
+    snippet = item.get('snippet', {})
+    statistics = item.get('statistics', {})
+    thumbnails = snippet.get('thumbnails', {})
+    return {
+        'video_id': item.get('id', ''),
+        'title': unescape(snippet.get('title', '')),
+        'channel_title': unescape(snippet.get('channelTitle', '')),
+        'published_at': snippet.get('publishedAt', ''),
+        'description': unescape(snippet.get('description', '')),
+        'thumbnail': (
+            thumbnails.get('maxres', {}).get('url')
+            or thumbnails.get('high', {}).get('url')
+            or thumbnails.get('medium', {}).get('url')
+            or thumbnails.get('default', {}).get('url')
+            or ''
+        ),
+        'view_count': int(statistics.get('viewCount') or 0),
+        'like_count': int(statistics.get('likeCount') or 0),
+    }
+
+
+@login_required
+def api_youtube_search(request):
+    query = request.GET.get('q', '').strip()
+    if not query:
+        return JsonResponse({'videos': []})
+    if not settings.YOUTUBE_DATA_API_KEY:
+        return JsonResponse({'message': '.env에 YOUTUBE_DATA_API_KEY를 설정해 주세요.'}, status=500)
+
+    params = {
+        'key': settings.YOUTUBE_DATA_API_KEY,
+        'part': 'snippet',
+        'type': 'video',
+        'q': query,
+        'maxResults': '12',
+        'safeSearch': 'moderate',
+        'order': request.GET.get('order', 'relevance'),
+        'regionCode': 'KR',
+        'relevanceLanguage': 'ko',
+    }
+
+    try:
+        response = requests.get('https://www.googleapis.com/youtube/v3/search', params=params, timeout=10)
+        response.raise_for_status()
+        payload = response.json()
+    except requests.RequestException as exc:
+        return JsonResponse({'message': f'YouTube 검색 요청에 실패했습니다: {exc}'}, status=502)
+    except ValueError:
+        return JsonResponse({'message': 'YouTube 응답이 JSON 형식이 아닙니다.'}, status=502)
+
+    videos = [
+        video
+        for video in (serialize_youtube_search_item(item) for item in payload.get('items', []))
+        if video['video_id']
+    ]
+    return JsonResponse({'videos': videos})
+
+
+@login_required
+def api_youtube_detail(request, video_id):
+    if not settings.YOUTUBE_DATA_API_KEY:
+        return JsonResponse({'message': '.env에 YOUTUBE_DATA_API_KEY를 설정해 주세요.'}, status=500)
+
+    params = {
+        'key': settings.YOUTUBE_DATA_API_KEY,
+        'part': 'snippet,statistics',
+        'id': video_id,
+    }
+
+    try:
+        response = requests.get('https://www.googleapis.com/youtube/v3/videos', params=params, timeout=10)
+        response.raise_for_status()
+        payload = response.json()
+    except requests.RequestException as exc:
+        return JsonResponse({'message': f'YouTube 영상 정보를 불러오지 못했습니다: {exc}'}, status=502)
+    except ValueError:
+        return JsonResponse({'message': 'YouTube 응답이 JSON 형식이 아닙니다.'}, status=502)
+
+    items = payload.get('items', [])
+    if not items:
+        return JsonResponse({'message': '영상을 찾을 수 없습니다.'}, status=404)
+
+    return JsonResponse({'video': serialize_youtube_detail_item(items[0])})
+
+
 def serialize_comment(comment, user=None):
+    can_delete = bool(
+        user
+        and user.is_authenticated
+        and (comment.author_id == user.id or comment.post.author_id == user.id)
+    )
     return {
         'id': comment.id,
         'content': comment.content,
         'author': comment.author.get_full_name() or comment.author.username,
         'created_at': timezone.localtime(comment.created_at).strftime('%Y-%m-%d %H:%M'),
         'can_edit': bool(user and user.is_authenticated and comment.author_id == user.id),
+        'can_delete': can_delete,
     }
 
 
@@ -686,10 +936,10 @@ def api_community_comment_detail(request, comment_id):
     comment = CommunityComment.objects.select_related('post', 'author').filter(id=comment_id).first()
     if comment is None:
         return JsonResponse({'message': '댓글을 찾을 수 없습니다.'}, status=404)
-    if comment.author_id != request.user.id:
-        return JsonResponse({'message': '본인이 작성한 댓글만 수정/삭제할 수 있습니다.'}, status=403)
 
     if request.method == 'POST':
+        if comment.author_id != request.user.id:
+            return JsonResponse({'message': '본인이 작성한 댓글만 수정할 수 있습니다.'}, status=403)
         content = request.POST.get('content', '').strip()
         if not content:
             return JsonResponse({'message': '댓글 내용을 입력해 주세요.'}, status=400)
@@ -698,6 +948,8 @@ def api_community_comment_detail(request, comment_id):
         return JsonResponse({'comment': serialize_comment(comment, request.user)})
 
     if request.method == 'DELETE':
+        if comment.author_id != request.user.id and comment.post.author_id != request.user.id:
+            return JsonResponse({'message': '게시글 작성자 또는 댓글 작성자만 댓글을 삭제할 수 있습니다.'}, status=403)
         comment.delete()
         return JsonResponse({'message': '댓글을 삭제했습니다.'})
 
@@ -913,6 +1165,10 @@ def serialize_deposit_product(product, user=None):
         bool(user and user.is_authenticated)
         and UserFavoriteDepositProduct.objects.filter(user=user, product=product).exists()
     )
+    is_subscribed = (
+        bool(user and user.is_authenticated)
+        and UserDepositSubscription.objects.filter(user=user, product=product).exists()
+    )
     return {
         'id': product.id,
         'product_type': product.product_type,
@@ -925,7 +1181,241 @@ def serialize_deposit_product(product, user=None):
         'interest_rate': str(best_option.interest_rate) if best_option and best_option.interest_rate is not None else None,
         'max_interest_rate': str(best_option.max_interest_rate) if best_option and best_option.max_interest_rate is not None else None,
         'is_favorite': is_favorite,
+        'is_subscribed': is_subscribed,
     }
+
+
+def get_latest_financial_type(user):
+    if user and user.is_authenticated:
+        result = DiagnosisResult.objects.filter(user=user).first()
+        if result and result.financial_type:
+            return result.financial_type
+
+    return '금융 새싹'
+
+
+def get_deposit_recommendation_candidates(limit=30):
+    products = list(DepositProduct.objects.prefetch_related('options').all())
+    serialized = [serialize_deposit_product(product) for product in products]
+    serialized.sort(
+        key=lambda item: float(item['max_interest_rate'] or item['interest_rate'] or 0),
+        reverse=True,
+    )
+    return serialized[:limit]
+
+
+def get_stock_recommendation_candidates(limit=40):
+    api_key = unquote(settings.KRX_API_KEY)
+    if not api_key:
+        return FALLBACK_STOCKS[:limit]
+
+    params = {
+        "serviceKey": api_key,
+        "resultType": "json",
+        "pageNo": "1",
+        "numOfRows": "3000",
+    }
+
+    try:
+        response = requests.get(settings.STOCK_API_URL, params=params, timeout=10)
+        response.raise_for_status()
+        payload = response.json()
+    except (requests.RequestException, ValueError):
+        return FALLBACK_STOCKS[:limit]
+
+    items = payload.get("response", {}).get("body", {}).get("items", {}).get("item", [])
+    if isinstance(items, dict):
+        items = [items]
+
+    stocks = deduplicate_latest_stocks([serialize_stock_item(item) for item in items])
+    stocks.sort(
+        key=lambda item: (
+            item["market_cap"],
+            item["change_rate"],
+            item["volume"],
+        ),
+        reverse=True,
+    )
+    return stocks[:limit] or FALLBACK_STOCKS[:limit]
+
+
+def build_ai_product_recommendation(finanical_type, deposit_candidates, stock_candidates):
+    if not settings.GMS_API_KEY or not settings.GMS_OPENAI_BASE_URL:
+        raise OpenAIError("GMS OpenAI settings are missing.")
+
+    client = OpenAI(
+        api_key=settings.GMS_API_KEY,
+        base_url=settings.GMS_OPENAI_BASE_URL,
+    )
+
+    candidate_payload = {
+        "financial_type": finanical_type,
+        "deposit_candidates": [
+            {
+                "id": item["id"],
+                "product_type": item["product_type_display"],
+                "company": item["financial_company_name"],
+                "name": item["product_name"],
+                "best_term": item["best_term"],
+                "interest_rate": item["interest_rate"],
+                "max_interest_rate": item["max_interest_rate"],
+                "max_limit": item["max_limit"],
+            }
+            for item in deposit_candidates
+        ],
+        "stock_candidates": [
+            {
+                "code": item["code"],
+                "name": item["name"],
+                "market": item["market"],
+                "base_date": item["base_date"],
+                "current_price": item["current_price"],
+                "change_rate": item["change_rate"],
+                "volume": item["volume"],
+                "market_cap": item["market_cap"],
+            }
+            for item in stock_candidates
+        ],
+    }
+
+    response = client.chat.completions.create(
+        model=settings.GMS_OPENAI_MODEL,
+        messages=[
+            {"role": "system", "content": FINANCIAL_TYPE_RECOMMENDATION_PROMPT},
+            {
+                "role": "user",
+                "content": json.dumps(candidate_payload, ensure_ascii=False),
+            },
+        ],
+        temperature=0.2,
+        response_format={"type": "json_object"},
+    )
+
+    content = response.choices[0].message.content or "{}"
+    return json.loads(content)
+
+
+def normalize_ai_recommendations(ai_result, deposit_candidates, stock_candidates):
+    deposit_candidate_ids = [item["id"] for item in deposit_candidates]
+    stock_candidate_codes = [item["code"] for item in stock_candidates]
+
+    deposit_ids = []
+    for product_id in ai_result.get("deposit_product_ids", []):
+        try:
+            product_id = int(product_id)
+        except (TypeError, ValueError):
+            continue
+        if product_id in deposit_candidate_ids and product_id not in deposit_ids:
+            deposit_ids.append(product_id)
+
+    stock_codes = []
+    for code in ai_result.get("stock_codes", []):
+        code = str(code)
+        if code in stock_candidate_codes and code not in stock_codes:
+            stock_codes.append(code)
+
+    for product_id in deposit_candidate_ids:
+        if len(deposit_ids) >= 3:
+            break
+        if product_id not in deposit_ids:
+            deposit_ids.append(product_id)
+
+    for code in stock_candidate_codes:
+        if len(stock_codes) >= 3:
+            break
+        if code not in stock_codes:
+            stock_codes.append(code)
+
+    return deposit_ids[:3], stock_codes[:3]
+
+
+def hydrate_recommended_products(deposit_ids, stock_codes, stock_candidates, user):
+    deposit_products = DepositProduct.objects.prefetch_related('options').filter(id__in=deposit_ids)
+    deposit_map = {
+        product.id: serialize_deposit_product(product, user)
+        for product in deposit_products
+    }
+    stock_map = {
+        stock["code"]: stock
+        for stock in stock_candidates
+    }
+
+    deposits = [deposit_map[product_id] for product_id in deposit_ids if product_id in deposit_map]
+    stocks = [stock_map[code] for code in stock_codes if code in stock_map]
+    return deposits, mark_stock_favorites(stocks, user)
+
+
+def api_ai_product_recommendations(request):
+    today = timezone.localdate()
+    financial_type = get_latest_financial_type(request.user)
+    deposit_candidates = get_deposit_recommendation_candidates()
+    stock_candidates = get_stock_recommendation_candidates()
+
+    cached = AiProductRecommendation.objects.filter(
+        recommendation_date=today,
+        financial_type=financial_type,
+    ).first()
+
+    if cached:
+        deposits, stocks = hydrate_recommended_products(
+            cached.deposit_product_ids,
+            cached.stock_codes,
+            cached.stock_items or stock_candidates,
+            request.user,
+        )
+        return JsonResponse({
+            "financial_type": financial_type,
+            "deposits": deposits,
+            "stocks": stocks,
+            "cached": True,
+        })
+
+    try:
+        ai_result = build_ai_product_recommendation(
+            financial_type,
+            deposit_candidates,
+            stock_candidates,
+        )
+        is_ai_recommended = True
+    except (OpenAIError, json.JSONDecodeError, TypeError, ValueError):
+        ai_result = {}
+        is_ai_recommended = False
+
+    deposit_ids, stock_codes = normalize_ai_recommendations(
+        ai_result,
+        deposit_candidates,
+        stock_candidates,
+    )
+    selected_stock_items = [
+        stock
+        for stock in stock_candidates
+        if stock["code"] in stock_codes
+    ]
+
+    AiProductRecommendation.objects.update_or_create(
+        recommendation_date=today,
+        financial_type=financial_type,
+        defaults={
+            "deposit_product_ids": deposit_ids,
+            "stock_codes": stock_codes,
+            "stock_items": selected_stock_items,
+        },
+    )
+
+    deposits, stocks = hydrate_recommended_products(
+        deposit_ids,
+        stock_codes,
+        stock_candidates,
+        request.user,
+    )
+
+    return JsonResponse({
+        "financial_type": financial_type,
+        "deposits": deposits,
+        "stocks": stocks,
+        "cached": False,
+        "is_ai_recommended": is_ai_recommended,
+    })
 
 
 def api_deposit_products(request):
@@ -994,6 +1484,94 @@ def serialize_stock_item(item):
 
 
 DEFAULT_STOCK_MARKETS = ['KOSPI', 'KOSDAQ', 'KONEX']
+FALLBACK_STOCKS = [
+    {'code': '000660', 'isin_code': '', 'name': 'SK하이닉스', 'market': 'KOSPI', 'base_date': '20260622', 'current_price': 2919000, 'change': 155000, 'change_rate': 5.61, 'volume': 5179795, 'market_cap': 2080378203435000},
+    {'code': '005930', 'isin_code': '', 'name': '삼성전자', 'market': 'KOSPI', 'base_date': '20260622', 'current_price': 353500, 'change': -500, 'change_rate': -0.14, 'volume': 24330451, 'market_cap': 2066659487928000},
+    {'code': '402340', 'isin_code': '', 'name': 'SK스퀘어', 'market': 'KOSPI', 'base_date': '20260622', 'current_price': 1970000, 'change': 190000, 'change_rate': 10.67, 'volume': 1416660, 'market_cap': 259958020420000},
+    {'code': '005935', 'isin_code': '', 'name': '삼성전자우', 'market': 'KOSPI', 'base_date': '20260622', 'current_price': 224000, 'change': 2000, 'change_rate': 0.9, 'volume': 3735142, 'market_cap': 179731149472000},
+    {'code': '009150', 'isin_code': '', 'name': '삼성전기', 'market': 'KOSPI', 'base_date': '20260622', 'current_price': 2228000, 'change': -42000, 'change_rate': -1.85, 'volume': 864651, 'market_cap': 166417554688000},
+    {'code': '005380', 'isin_code': '', 'name': '현대차', 'market': 'KOSPI', 'base_date': '20260622', 'current_price': 581000, 'change': -32000, 'change_rate': -5.22, 'volume': 962320, 'market_cap': 118964262046000},
+    {'code': '373220', 'isin_code': '', 'name': 'LG에너지솔루션', 'market': 'KOSPI', 'base_date': '20260622', 'current_price': 385500, 'change': -19000, 'change_rate': -4.7, 'volume': 358905, 'market_cap': 90207000000000},
+    {'code': '032830', 'isin_code': '', 'name': '삼성생명', 'market': 'KOSPI', 'base_date': '20260622', 'current_price': 450500, 'change': -46500, 'change_rate': -9.36, 'volume': 539124, 'market_cap': 90100000000000},
+    {'code': '028260', 'isin_code': '', 'name': '삼성물산', 'market': 'KOSPI', 'base_date': '20260622', 'current_price': 520000, 'change': 28500, 'change_rate': 5.8, 'volume': 799994, 'market_cap': 84327142120000},
+    {'code': '329180', 'isin_code': '', 'name': 'HD현대중공업', 'market': 'KOSPI', 'base_date': '20260622', 'current_price': 636000, 'change': -31000, 'change_rate': -4.65, 'volume': 319861, 'market_cap': 66755339100000},
+]
+
+
+def stock_list_response(stocks, market='', ordering='market_cap', page=1, per_page=30, message=None, is_fallback=False, user=None):
+    stocks = list(stocks)
+    markets = sorted({
+        *DEFAULT_STOCK_MARKETS,
+        *(stock["market"] for stock in stocks if stock["market"]),
+    })
+
+    if market:
+        stocks = [stock for stock in stocks if stock["market"] == market]
+
+    if ordering == "name":
+        stocks.sort(key=lambda item: item["name"])
+    elif ordering == "price":
+        stocks.sort(key=lambda item: item["current_price"], reverse=True)
+    elif ordering == "change_rate":
+        stocks.sort(key=lambda item: item["change_rate"], reverse=True)
+    else:
+        stocks.sort(key=lambda item: item["market_cap"], reverse=True)
+
+    total_count = len(stocks)
+    start = (page - 1) * per_page
+    end = start + per_page
+    page_stocks = mark_stock_favorites(stocks[start:end], user)
+    payload = {
+        "stocks": page_stocks,
+        "markets": markets,
+        "total_count": total_count,
+        "is_fallback": is_fallback,
+    }
+    if message:
+        payload["message"] = message
+    return JsonResponse(payload)
+
+
+def mark_stock_favorites(stocks, user):
+    if not user or not user.is_authenticated:
+        return [
+            {
+                **stock,
+                "is_favorite": False,
+            }
+            for stock in stocks
+        ]
+
+    codes = [stock.get("code") for stock in stocks if stock.get("code")]
+    favorite_codes = set(
+        UserFavoriteStock.objects
+        .filter(user=user, code__in=codes)
+        .values_list("code", flat=True)
+    )
+
+    return [
+        {
+            **stock,
+            "is_favorite": stock.get("code") in favorite_codes,
+        }
+        for stock in stocks
+    ]
+
+
+def serialize_favorite_stock(favorite):
+    return {
+        "code": favorite.code,
+        "isin_code": favorite.isin_code,
+        "name": favorite.name,
+        "market": favorite.market,
+        "base_date": favorite.base_date,
+        "current_price": favorite.current_price,
+        "change": favorite.change,
+        "change_rate": favorite.change_rate,
+        "volume": favorite.volume,
+        "market_cap": favorite.market_cap,
+        "is_favorite": True,
+    }
 
 
 def api_stocks(request):
@@ -1043,9 +1621,15 @@ def api_stocks(request):
         payload = response.json()
 
     except requests.RequestException:
-        return JsonResponse(
-            {"message": "주식 API 요청에 실패했습니다."},
-            status=502
+        return stock_list_response(
+            FALLBACK_STOCKS,
+            market=market,
+            ordering=ordering,
+            page=page,
+            per_page=per_page,
+            message="주식 API 연결에 실패해 기본 종목 목록을 표시합니다.",
+            is_fallback=True,
+            user=request.user,
         )
 
     except ValueError:
@@ -1064,32 +1648,41 @@ def api_stocks(request):
 
     stocks = [serialize_stock_item(item) for item in items]
     stocks = deduplicate_latest_stocks(stocks)
-    markets = sorted({
-        *DEFAULT_STOCK_MARKETS,
-        *(stock["market"] for stock in stocks if stock["market"]),
-    })
+    return stock_list_response(stocks, market=market, ordering=ordering, page=page, per_page=per_page, user=request.user)
 
-    if market:
-        stocks = [stock for stock in stocks if stock["market"] == market]
 
-    if ordering == "name":
-        stocks.sort(key=lambda item: item["name"])
-    elif ordering == "price":
-        stocks.sort(key=lambda item: item["current_price"], reverse=True)
-    elif ordering == "change_rate":
-        stocks.sort(key=lambda item: item["change_rate"], reverse=True)
-    else:
-        stocks.sort(key=lambda item: item["market_cap"], reverse=True)
+def api_stock_detail(request, stock_code):
+    api_key = unquote(settings.KRX_API_KEY)
+    stock = None
 
-    total_count = len(stocks)
-    start = (page - 1) * per_page
-    end = start + per_page
+    if api_key:
+        params = {
+            "serviceKey": api_key,
+            "resultType": "json",
+            "pageNo": "1",
+            "numOfRows": "20",
+            "likeSrtnCd": stock_code,
+        }
+        try:
+            response = requests.get(settings.STOCK_API_URL, params=params, timeout=10)
+            response.raise_for_status()
+            payload = response.json()
+            items = payload.get("response", {}).get("body", {}).get("items", {}).get("item", [])
+            if isinstance(items, dict):
+                items = [items]
+            stocks = deduplicate_latest_stocks([serialize_stock_item(item) for item in items])
+            stock = next((item for item in stocks if item["code"] == stock_code), stocks[0] if stocks else None)
+        except (requests.RequestException, ValueError):
+            stock = None
 
-    return JsonResponse({
-        "stocks": stocks[start:end],
-        "markets": markets,
-        "total_count": total_count,
-    })
+    if stock is None:
+        stock = next((item for item in FALLBACK_STOCKS if item["code"] == stock_code), None)
+
+    if stock is None:
+        return JsonResponse({"message": "주식 종목을 찾을 수 없습니다."}, status=404)
+
+    stock = mark_stock_favorites([stock], request.user)[0]
+    return JsonResponse({"stock": stock})
 
 
 def api_deposit_product_detail(request, product_id):
@@ -1133,11 +1726,76 @@ def api_favorite_deposit_products(request):
         .select_related('product')
         .prefetch_related('product__options')
     )
+    subscriptions = (
+        UserDepositSubscription.objects
+        .filter(user=request.user)
+        .select_related('product')
+        .prefetch_related('product__options')
+    )
+    products = []
+    seen_product_ids = set()
+
+    for favorite in favorites:
+        products.append(serialize_deposit_product(favorite.product, request.user))
+        seen_product_ids.add(favorite.product_id)
+
+    for subscription in subscriptions:
+        if subscription.product_id in seen_product_ids:
+            continue
+        products.append(serialize_deposit_product(subscription.product, request.user))
+        seen_product_ids.add(subscription.product_id)
+
     return JsonResponse({
-        'products': [
-            serialize_deposit_product(favorite.product, request.user)
-            for favorite in favorites
-        ]
+        'products': products,
+        'stocks': [
+            serialize_favorite_stock(favorite)
+            for favorite in UserFavoriteStock.objects.filter(user=request.user)
+        ],
+    })
+
+
+@csrf_exempt
+@login_required
+def api_favorite_stock_toggle(request, stock_code):
+    if request.method != 'POST':
+        return JsonResponse({'message': 'POST 요청만 지원합니다.'}, status=405)
+
+    favorite = UserFavoriteStock.objects.filter(user=request.user, code=stock_code).first()
+    if favorite:
+        favorite.delete()
+        stock = {
+            "code": stock_code,
+            "is_favorite": False,
+        }
+        return JsonResponse({
+            'message': '관심상품에서 제거했습니다.',
+            'is_favorite': False,
+            'stock': stock,
+        })
+
+    try:
+        body = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        body = {}
+
+    stock_name = (body.get('name') or stock_code).strip()
+    favorite = UserFavoriteStock.objects.create(
+        user=request.user,
+        code=stock_code,
+        isin_code=(body.get('isin_code') or '').strip(),
+        name=stock_name,
+        market=(body.get('market') or '').strip(),
+        base_date=(body.get('base_date') or '').strip(),
+        current_price=int(parse_stock_number(body.get('current_price'))),
+        change=int(parse_stock_number(body.get('change'))),
+        change_rate=float(parse_stock_number(body.get('change_rate'))),
+        volume=int(parse_stock_number(body.get('volume'))),
+        market_cap=int(parse_stock_number(body.get('market_cap'))),
+    )
+    return JsonResponse({
+        'message': '관심상품에 추가했습니다.',
+        'is_favorite': True,
+        'stock': serialize_favorite_stock(favorite),
     })
 
 
@@ -1225,21 +1883,33 @@ def api_map_config(request):
 @csrf_exempt
 @login_required
 def api_join_deposit_product(request, product_id):
-    if request.method != 'POST':
-        return JsonResponse({'message': 'POST 요청만 지원합니다.'}, status=405)
+    if request.method not in ['POST', 'DELETE']:
+        return JsonResponse({'message': 'POST 또는 DELETE 요청만 지원합니다.'}, status=405)
 
     product = DepositProduct.objects.filter(id=product_id).first()
     if product is None:
         return JsonResponse({'message': '상품을 찾을 수 없습니다.'}, status=404)
+
+    if request.method == 'DELETE':
+        deleted_count, _ = UserDepositSubscription.objects.filter(
+            user=request.user,
+            product=product,
+        ).delete()
+        return JsonResponse({
+            'message': '관심목록에서 제거했습니다.' if deleted_count else '관심목록에 없는 상품입니다.',
+            'is_subscribed': False,
+            'product': serialize_deposit_product(product, request.user),
+        })
 
     subscription, created = UserDepositSubscription.objects.get_or_create(
         user=request.user,
         product=product,
     )
     return JsonResponse({
-        'message': '가입 목록에 추가했습니다.' if created else '이미 가입 목록에 있는 상품입니다.',
+        'message': '관심목록에 추가했습니다.' if created else '이미 관심목록에 있는 상품입니다.',
         'is_subscribed': True,
         'subscription_id': subscription.id,
+        'product': serialize_deposit_product(product, request.user),
     })
 
 
@@ -1453,6 +2123,57 @@ def session_api(request):
 
 
 @csrf_exempt
+def password_change_api(request):
+    if request.method != "POST":
+        return JsonResponse({
+            "message": "POST 요청만 허용됩니다."
+        }, status=405)
+
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            "message": "로그인이 필요합니다."
+        }, status=401)
+
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({
+            "message": "잘못된 요청 형식입니다."
+        }, status=400)
+
+    current_password = body.get("current_password", "")
+    new_password = body.get("new_password", "")
+    new_password_confirm = body.get("new_password_confirm", "")
+
+    if not current_password or not new_password or not new_password_confirm:
+        return JsonResponse({
+            "message": "모든 항목을 입력해주세요."
+        }, status=400)
+
+    if not request.user.check_password(current_password):
+        return JsonResponse({
+            "message": "기존 비밀번호가 올바르지 않습니다."
+        }, status=400)
+
+    if new_password != new_password_confirm:
+        return JsonResponse({
+            "message": "새 비밀번호가 일치하지 않습니다."
+        }, status=400)
+
+    request.user.set_password(new_password)
+    request.user.save(update_fields=["password"])
+    profile, _ = UserProfile.objects.get_or_create(user=request.user)
+    profile.password_changed_at = timezone.now()
+    profile.save(update_fields=["password_changed_at"])
+    update_session_auth_hash(request, request.user)
+
+    return JsonResponse({
+        "message": "비밀번호가 변경되었습니다.",
+        "password_changed_at": timezone.localtime(profile.password_changed_at).strftime("%Y-%m-%d"),
+    })
+
+
+@csrf_exempt
 def logout_api(request):
     if request.method != "POST":
         return JsonResponse({
@@ -1496,6 +2217,7 @@ def dashboard_api(request):
             "invest_experience": profile.invest_experience,
             "birth_date": profile.birth_date.isoformat() if profile.birth_date else "",
             "created_at": profile.created_at.strftime("%Y-%m-%d") if profile.created_at else "",
+            "password_changed_at": timezone.localtime(profile.password_changed_at).strftime("%Y-%m-%d") if profile.password_changed_at else "",
         }
     }
 

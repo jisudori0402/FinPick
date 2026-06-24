@@ -214,6 +214,7 @@ const submitDiagnosis = async () => {
     }
 
     localStorage.setItem('latestDiagnosisResult', JSON.stringify(resultPayload))
+    localStorage.removeItem('latestRoadmap')
     window.dispatchEvent(new Event('auth-state-changed'))
 
     router.push('/diagnosis-result')

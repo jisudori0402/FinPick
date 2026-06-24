@@ -1,10 +1,12 @@
 <template>
   <section class="card panel bank-search-page">
     <RouterLink
-      class="secondary-btn back-btn"
+      class="secondary-btn back-btn icon-back-btn bank-back-btn"
       :to="product ? `/deposit-products/${product.id}` : '/deposit-products'"
+      aria-label="상품 상세로"
+      title="상품 상세로"
     >
-      상품 상세로
+      ←
     </RouterLink>
 
     <h2>근처 은행 검색</h2>

@@ -1,8 +1,9 @@
 <template>
-  <div class="wrap">
-    <div class="card">
-      <h1>FinPick 로그인</h1>
-      <p>회원가입한 계정으로 로그인해 주세요.</p>
+  <div class="wrap login-wrap">
+    <div class="card login-card">
+      <span class="login-kicker">Welcome back</span>
+      <h1><strong>FinPick</strong> 로그인</h1>
+      <p>나만의 금융 성장 로드맵을 이어가려면 로그인해 주세요.</p>
 
       <div v-if="error" class="msg">
         {{ error }}

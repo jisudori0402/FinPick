@@ -17,36 +17,59 @@
       <div class="journey-visual" aria-label="금융 성장 단계 미리보기">
         <div class="cloud cloud-one"></div>
         <div class="cloud cloud-two"></div>
+        <svg class="journey-path" viewBox="0 0 440 392" aria-hidden="true">
+          <path class="mountain-soft" d="M 32 380 L 196 118 L 350 380 Z" />
+          <path class="mountain-main" d="M 104 380 L 316 42 L 438 380 Z" />
+          <path
+            class="climb-road"
+            d="M 118 386 C 196 346 226 314 190 278 C 154 242 178 212 258 181 C 342 148 314 103 384 58 L 406 78 C 344 116 378 160 288 200 C 214 233 208 255 240 286 C 282 328 238 370 158 392 Z"
+          />
+          <path
+            class="climb-road-light"
+            d="M 150 366 C 218 329 240 307 210 280 C 176 249 202 228 268 201 C 342 170 334 125 384 88"
+          />
+          <path class="summit-glow" d="M 322 42 C 372 30 413 56 414 101 C 372 80 342 84 306 112 C 292 82 298 56 322 42 Z" />
+        </svg>
         <div class="flag"></div>
-        <div class="road"></div>
+        <span class="trail-dot dot-one" aria-hidden="true"></span>
+        <span class="trail-dot dot-two" aria-hidden="true"></span>
+        <span class="trail-dot dot-three" aria-hidden="true"></span>
+        <span class="trail-dot dot-four" aria-hidden="true"></span>
+        <span class="scene-tree tree-one" aria-hidden="true"></span>
+        <span class="scene-tree tree-two" aria-hidden="true"></span>
+        <span class="scene-tree tree-three" aria-hidden="true"></span>
+        <span class="scene-leaf" aria-hidden="true"></span>
 
         <div class="level-card level-one">
           <span class="level-icon wallet-icon"></span>
-          <strong>Lv.1</strong>
+          <strong>시작</strong>
           <p>금융 기초 다지기</p>
           <small>비상금 만들기</small>
+          <span class="level-arrow" aria-hidden="true">›</span>
         </div>
 
         <div class="level-card level-two">
           <span class="level-icon piggy-icon"></span>
-          <strong>Lv.2</strong>
+          <strong>성장</strong>
           <p>목돈 마련하기</p>
           <small>저축 시작하기</small>
+          <span class="level-arrow" aria-hidden="true">›</span>
         </div>
 
         <div class="level-card level-three">
           <span class="level-icon chart-icon"></span>
-          <strong>Lv.3</strong>
+          <strong>도약</strong>
           <p>자산 성장하기</p>
           <small>투자 시작하기</small>
+          <span class="level-arrow" aria-hidden="true">›</span>
         </div>
       </div>
 
       <aside class="roadmap-preview">
-        <h2>금융 성장 로드맵 미리보기</h2>
+        <h2>서비스 가이드 미리보기</h2>
         <ol>
           <li v-for="step in roadmapPreview" :key="step.title">
-            <span>{{ step.number }}</span>
+            <span class="guide-step-number">{{ step.number }}</span>
             <div>
               <strong>{{ step.title }}</strong>
               <p>{{ step.description }}</p>
@@ -69,8 +92,14 @@
         </div>
 
         <div class="level-content">
-          <div class="sprout-badge" aria-hidden="true">
-            <span></span>
+          <div class="home-type-avatar" :class="{ 'has-image': homeTypeImageSrc }" aria-hidden="true">
+            <img
+              v-if="homeTypeImageSrc"
+              :src="homeTypeImageSrc"
+              :alt="`${financialTypeName} 캐릭터`"
+              @error="markHomeTypeImageError"
+            />
+            <span v-else></span>
           </div>
           <div>
             <strong>{{ currentLevelLabel }}</strong>
@@ -140,10 +169,9 @@
       <div class="quote-mark" aria-hidden="true">"</div>
       <div>
         <h2>오늘의 금융 한마디</h2>
-        <p>
-          월 소득의 10%만 저축해도<br />
-          1년 뒤 360만원을 모을 수 있어요.
-        </p>
+        <p>{{ todayTip }}</p>
+        <small v-if="todayTipLoading">AI가 오늘의 문장을 준비하고 있어요.</small>
+        <small v-else-if="todayTipError">{{ todayTipError }}</small>
       </div>
     </section>
   </div>
@@ -160,12 +188,16 @@ const name = ref('')
 const diagnosisResult = ref(null)
 const roadmap = ref(null)
 const favoriteProducts = ref([])
+const typeImageErrors = ref({})
+const todayTip = ref('월 소득의 10%만 저축해도 1년 뒤 360만원을 모을 수 있어요.')
+const todayTipLoading = ref(false)
+const todayTipError = ref('')
 
 const roadmapPreview = [
   {
     number: 1,
     title: '금융 상태 진단',
-    description: '현재 내 금융 상태를 분석해요',
+    description: '먼저 내 금융 상태를 분석해요',
   },
   {
     number: 2,
@@ -180,7 +212,7 @@ const roadmapPreview = [
   {
     number: 4,
     title: '성장 관리 및 피드백',
-    description: '목표 달성률과 성장을 함께 관리해요',
+    description: '목표 달성과 성장을 함께 관리해요',
   },
 ]
 
@@ -226,6 +258,15 @@ const fallbackProducts = [
   },
 ]
 
+const typeCharacterImages = {
+  안정형: '/financial-types/stable-saver.png',
+  계획형: '/financial-types/planner-saver.png',
+  소비러: '/financial-types/smart-spender.png',
+  투자러: '/financial-types/growth-investor.png',
+  점검러: '/financial-types/finance-checker.png',
+  자산러: '/financial-types/aggressive-asset.png',
+}
+
 const hasDiagnosisResult = computed(() => {
   return diagnosisResult.value !== null
 })
@@ -254,7 +295,38 @@ const rawFinancialType = computed(() => {
   return diagnosisResult.value?.financial_type || '금융 새싹'
 })
 
+const matchedType = computed(() => {
+  return Object.keys(typeCharacterImages).find((key) => rawFinancialType.value.includes(key)) || ''
+})
+
+const homeTypeImageSrc = computed(() => {
+  if (!matchedType.value || typeImageErrors.value[matchedType.value]) {
+    return ''
+  }
+
+  return typeCharacterImages[matchedType.value]
+})
+
+const markHomeTypeImageError = () => {
+  if (!matchedType.value) {
+    return
+  }
+
+  typeImageErrors.value = {
+    ...typeImageErrors.value,
+    [matchedType.value]: true,
+  }
+}
+
 const currentLevelLabel = computed(() => {
+  if (roadmap.value?.current_level_label) {
+    return roadmap.value.current_level_label
+  }
+
+  if (typeof roadmap.value?.current_level === 'number') {
+    return `Lv.${roadmap.value.current_level}`
+  }
+
   const levels = roadmap.value?.levels || []
   const currentLevel = levels.find((level) =>
     (level.missions || []).some((mission) => !mission.is_completed),
@@ -353,15 +425,40 @@ const loadHomeDashboard = async () => {
   }
 
   try {
-    const [roadmapResponse, favoritesResponse] = await Promise.all([
+    const [diagnosisResponse, roadmapResponse, favoritesResponse] = await Promise.all([
+      axios.get('http://localhost:8000/api/diagnosis/latest/', { withCredentials: true }),
       axios.get('http://localhost:8000/api/roadmap/', { withCredentials: true }),
       axios.get('http://localhost:8000/api/favorite-deposit-products/', { withCredentials: true }),
     ])
+
+    if (diagnosisResponse.data.result) {
+      diagnosisResult.value = diagnosisResponse.data.result
+      localStorage.setItem('latestDiagnosisResult', JSON.stringify(diagnosisResponse.data.result))
+    } else {
+      diagnosisResult.value = null
+      localStorage.removeItem('latestDiagnosisResult')
+    }
 
     roadmap.value = roadmapResponse.data.roadmap
     favoriteProducts.value = favoritesResponse.data.products || []
   } catch (err) {
     console.error(err)
+  }
+}
+
+const loadTodayTip = async () => {
+  todayTipLoading.value = true
+  todayTipError.value = ''
+
+  try {
+    const response = await axios.get('http://localhost:8000/api/ai/test/')
+    if (response.data.message) {
+      todayTip.value = response.data.message
+    }
+  } catch (err) {
+    todayTipError.value = err.response?.data?.message || '오늘의 금융 한마디를 불러오지 못했습니다.'
+  } finally {
+    todayTipLoading.value = false
   }
 }
 
@@ -372,6 +469,7 @@ const refreshHome = async () => {
 
 onMounted(() => {
   refreshHome()
+  loadTodayTip()
   window.addEventListener('auth-state-changed', refreshHome)
 })
 

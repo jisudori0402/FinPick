@@ -2,14 +2,17 @@ import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/Homeview.vue'
 import DepositProductListView from '../views/DepositProductListView.vue'
 import DepositProductDetailView from '../views/DepositProductDetailView.vue'
+import StockProductDetailView from '../views/StockProductDetailView.vue'
 import BankSearchView from '../views/BankSearchView.vue'
 import SignupView from '../views/SignupView.vue'
 import LoginView from '../views/LoginView.vue'
 import DashboardView from '../views/DashboardView.vue'
+import PasswordChangeView from '../views/PasswordChangeView.vue'
 import DiagnosisView from '../views/DiagnosisView.vue'
 import DiagnosisResultView from '../views/DiagnosisResultView.vue'
 import RoadmapView from '../views/RoadmapView.vue'
 import CommunityView from '../views/CommunityView.vue'
+import CommunityVideoDetailView from '../views/CommunityVideoDetailView.vue'
 import { notifyAuthChanged, syncAuthFromSession } from '../services/auth'
 
 
@@ -38,6 +41,14 @@ const router = createRouter({
       },
     },
     {
+      path: '/stocks/:code',
+      name: 'stock-product-detail',
+      component: StockProductDetailView,
+      meta: {
+        requiresAuth: true,
+      },
+    },
+    {
       path: '/bank-search/:productId',
       name: 'bank-search',
       component: BankSearchView,
@@ -59,6 +70,14 @@ const router = createRouter({
       path: '/dashboard',
       name: 'dashboard',
       component: DashboardView,
+      meta: {
+        requiresAuth: true,
+      },
+    },
+    {
+      path: '/password-change',
+      name: 'password-change',
+      component: PasswordChangeView,
       meta: {
         requiresAuth: true,
       },
@@ -91,6 +110,14 @@ const router = createRouter({
       path: '/community',
       name: 'community',
       component: CommunityView,
+      meta: {
+        requiresAuth: true,
+      },
+    },
+    {
+      path: '/community/videos/:videoId',
+      name: 'community-video-detail',
+      component: CommunityVideoDetailView,
       meta: {
         requiresAuth: true,
       },

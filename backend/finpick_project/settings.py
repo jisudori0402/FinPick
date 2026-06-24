@@ -70,12 +70,19 @@ LOGIN_URL = 'login'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 KAKAO_MAP_APP_KEY = os.getenv('KAKAO_MAP_APP_KEY', '')
 KAKAO_MOBILITY_REST_KEY = os.getenv('KAKAO_MOBILITY_REST_KEY', '')
+YOUTUBE_DATA_API_KEY = os.getenv('YOUTUBE_DATA_API_KEY', '')
 KRX_API_KEY = os.getenv('KRX_API_KEY') or os.getenv('STOCK_API_KEY') or os.getenv('DATA_GO_KR_API_KEY', '')
 STOCK_API_URL = os.getenv(
     'STOCK_API_URL',
     'https://apis.data.go.kr/1160100/service/GetStockSecuritiesInfoService/getStockPriceInfo',
 )
-
+GMS_API_KEY = os.getenv('GMS_API_KEY', '')
+GMS_OPENAI_BASE_URL = (
+    os.getenv('GMS_OPENAI_BASE_URL')
+    or os.getenv('GMS_BASE_URL')
+    or ''
+)
+GMS_OPENAI_MODEL = os.getenv('GMS_OPENAI_MODEL', 'gpt-4.1-mini')
 
 CORS_ALLOW_CREDENTIALS = True
 

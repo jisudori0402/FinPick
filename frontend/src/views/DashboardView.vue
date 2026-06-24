@@ -75,7 +75,15 @@
           <section class="my-card financial-type-card">
             <h2>내 금융 유형</h2>
             <div class="financial-type-body">
-              <div class="type-emoji">{{ financialTypeIcon }}</div>
+              <div class="type-emoji type-character-thumb">
+                <img
+                  v-if="financialTypeImageSrc"
+                  :src="financialTypeImageSrc"
+                  :alt="`${financialTypeName} 캐릭터`"
+                  @error="markFinancialTypeImageError"
+                />
+                <span v-else>{{ financialTypeIcon }}</span>
+              </div>
               <div>
                 <strong>{{ financialTypeName }}</strong>
                 <p>{{ financialTypeDescription }}</p>
@@ -182,9 +190,9 @@
                 <span>마지막 변경일</span>
                 <strong>{{ passwordChangedAt }}</strong>
               </div>
-              <button type="button">
+              <RouterLink class="password-change-link" to="/password-change">
                 비밀번호 변경하기
-              </button>
+              </RouterLink>
             </div>
 
             <p>안전한 계정 보호를 위해 주기적으로 비밀번호를 변경해 주세요.</p>
@@ -219,10 +227,11 @@ const profile = ref({
 })
 
 const diagnosisResult = ref(null)
+const roadmap = ref(null)
+const typeImageErrors = ref({})
 const loading = ref(true)
 const saveMessage = ref('')
-const roadmapProgress = ref(25)
-const passwordChangedAt = ref('2026.05.15')
+const passwordChangedAt = ref(localStorage.getItem('passwordChangedAt') || '변경 이력 없음')
 
 const profileForm = ref({
   name: '',
@@ -262,6 +271,15 @@ const typeCopy = {
   },
 }
 
+const typeCharacterImages = {
+  안정형: '/financial-types/stable-saver.png',
+  계획형: '/financial-types/planner-saver.png',
+  소비러: '/financial-types/smart-spender.png',
+  투자러: '/financial-types/growth-investor.png',
+  점검러: '/financial-types/finance-checker.png',
+  자산러: '/financial-types/aggressive-asset.png',
+}
+
 const displayName = computed(() => {
   return user.value.name || user.value.username || 'FinPick 회원'
 })
@@ -278,7 +296,39 @@ const financialTypeName = computed(() => {
   return (diagnosisResult.value?.financial_type || '금융 새싹').replace(/^[^\s]+\s*/, '')
 })
 
+const getRoadmapLevelLabel = () => {
+  if (roadmap.value?.current_level_label) {
+    return roadmap.value.current_level_label
+  }
+
+  if (typeof roadmap.value?.current_level === 'number') {
+    return `Lv.${roadmap.value.current_level}`
+  }
+
+  const levels = roadmap.value?.levels || []
+  const currentLevel = levels.find((level) => {
+    if (level.is_locked) {
+      return false
+    }
+
+    const missions = level.missions || []
+    return missions.some((mission) => !mission.is_completed)
+  })
+
+  if (currentLevel?.level) {
+    return `Lv.${currentLevel.level}`
+  }
+
+  const maxLevel = Math.max(...levels.map((level) => Number(level.level) || 0))
+  return maxLevel > 0 ? `Lv.${maxLevel}` : ''
+}
+
 const currentLevel = computed(() => {
+  const roadmapLevelLabel = getRoadmapLevelLabel()
+  if (roadmapLevelLabel) {
+    return roadmapLevelLabel
+  }
+
   const score = diagnosisResult.value?.readiness_score || 0
 
   if (score >= 85) {
@@ -296,13 +346,35 @@ const currentLevel = computed(() => {
   return 'Lv.1'
 })
 
+const roadmapProgress = computed(() => {
+  if (typeof roadmap.value?.progress === 'number') {
+    return roadmap.value.progress
+  }
+
+  return 0
+})
+
 const matchedType = computed(() => {
   const name = financialTypeName.value
   return Object.keys(typeCopy).find((key) => name.includes(key)) || '계획형'
 })
 
 const financialTypeIcon = computed(() => typeCopy[matchedType.value].icon)
+const financialTypeImageSrc = computed(() => {
+  if (typeImageErrors.value[matchedType.value]) {
+    return ''
+  }
+
+  return typeCharacterImages[matchedType.value] || ''
+})
 const financialTypeDescription = computed(() => typeCopy[matchedType.value].description)
+
+const markFinancialTypeImageError = () => {
+  typeImageErrors.value = {
+    ...typeImageErrors.value,
+    [matchedType.value]: true,
+  }
+}
 
 const introText = computed(() => {
   const income = profile.value.monthly_income ? `월 소득 ${profile.value.monthly_income}만원` : '소득 정보를 준비 중'
@@ -354,6 +426,12 @@ const loadDashboard = async () => {
       name: response.data.user?.name || response.data.user?.username || '',
     }
     profile.value = response.data.profile
+    passwordChangedAt.value = response.data.profile?.password_changed_at || '변경 이력 없음'
+    if (response.data.profile?.password_changed_at) {
+      localStorage.setItem('passwordChangedAt', response.data.profile.password_changed_at)
+    } else {
+      localStorage.removeItem('passwordChangedAt')
+    }
     syncProfileForm()
   } catch (err) {
     console.error(err)
@@ -369,11 +447,23 @@ const loadDashboard = async () => {
   }
 }
 
+const loadRoadmap = async () => {
+  try {
+    const response = await axios.get('http://localhost:8000/api/roadmap/', {
+      withCredentials: true,
+    })
+
+    roadmap.value = response.data.roadmap
+  } catch (err) {
+    console.error(err)
+  }
+}
+
 const saveProfilePreview = () => {
   saveMessage.value = '프로필 저장 기능은 다음 단계에서 연결할 예정입니다.'
 }
 
 onMounted(async () => {
-  await Promise.all([loadDashboard(), loadDiagnosisResult()])
+  await Promise.all([loadDashboard(), loadDiagnosisResult(), loadRoadmap()])
 })
 </script>
