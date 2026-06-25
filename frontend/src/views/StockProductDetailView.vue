@@ -84,7 +84,7 @@
           type="button"
           @click="toggleFavoriteStock"
         >
-          {{ stock.is_favorite ? '관심상품에서 제거하기' : '관심상품 추가하기' }}
+          {{ stock.is_favorite ? '관심 상품에서 제거하기' : '관심 상품 추가하기' }}
         </button>
       </div>
 
@@ -181,7 +181,7 @@ const toggleFavoriteStock = async () => {
     }
     favoriteMessage.value = response.data.message
   } catch (err) {
-    favoriteMessage.value = err.response?.data?.message || '관심상품을 변경하지 못했습니다.'
+    favoriteMessage.value = err.response?.data?.message || '관심 상품을 변경하지 못했습니다.'
     console.error(err)
   }
 }

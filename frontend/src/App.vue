@@ -1,5 +1,7 @@
 <template>
-  <div class="app">
+  <SplashScreen v-if="showSplash" @complete="showSplash = false" />
+
+  <div class="app" :class="{ 'app--splashing': showSplash, 'app--ready': !showSplash }">
     <header class="site-header">
       <RouterLink class="brand" to="/" aria-label="FinPick 홈">
         <img class="brand-logo" src="@/assets/finpick_logo.png" alt="FinPick" />
@@ -36,6 +38,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
+import SplashScreen from './components/SplashScreen.vue'
 import { logoutSession, syncAuthFromSession } from './services/auth'
 
 const router = useRouter()
@@ -43,6 +46,7 @@ const route = useRoute()
 
 const isLoggedIn = ref(localStorage.getItem('isLoggedIn') === 'true')
 const hasDiagnosisResult = ref(!!localStorage.getItem('latestDiagnosisResult'))
+const showSplash = ref(true)
 
 const syncState = () => {
   isLoggedIn.value = localStorage.getItem('isLoggedIn') === 'true'
@@ -84,3 +88,25 @@ const logout = async () => {
   await router.push('/')
 }
 </script>
+
+<style scoped>
+.app {
+  transition:
+    opacity 0.72s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.72s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.72s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.app--splashing {
+  opacity: 0;
+  transform: translateY(10px) scale(0.992);
+  filter: blur(6px);
+  pointer-events: none;
+}
+
+.app--ready {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  filter: blur(0);
+}
+</style>

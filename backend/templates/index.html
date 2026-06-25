@@ -395,7 +395,7 @@
                   <button class="pill-link" style="box-shadow:none; padding:0; background:transparent; color:#1d5fe9;" @click="goToProducts">전체 보기 ›</button>
                 </div>
                 <div v-if="!favoriteProducts.length" class="recommend-box">
-                  <span class="hot-chip">아직 관심상품이 없어요</span>
+                  <span class="hot-chip">아직 관심 상품이 없어요</span>
                   <h3>상품을 별표로 저장해보세요</h3>
                   <p>모든 상품에서 마음에 드는 상품을<br />한눈에 모아볼 수 있어요.</p>
                   <button class="detail-btn" @click="goToProducts">상품 보러가기 →</button>
@@ -607,7 +607,7 @@
                 class="favorite-btn"
                 :class="{ active: item.is_favorite }"
                 @click.stop="toggleFavoriteProduct(item)"
-                :title="item.is_favorite ? '관심상품 해제' : '관심상품 추가'"
+                :title="item.is_favorite ? '관심 상품 해제' : '관심 상품 추가'"
                 v-text="item.is_favorite ? '★' : '☆'"
               ></button>
               <small v-text="item.product_type === 'deposit' ? '예금' : '적금'"></small>

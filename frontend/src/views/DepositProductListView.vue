@@ -1,9 +1,14 @@
 <template>
-  <section class="products-page product-hub-page">
-    <aside class="product-sidebar">
+  <SidebarLayout class="products-page product-hub-page" surface="soft">
+    <template #sidebar>
+      <AppSidebar>
+        <template #top>
       <div class="product-mascot" aria-hidden="true">
         <img src="/product-sidebar-character.png" alt="" />
       </div>
+        </template>
+
+        <template #nav>
 
       <nav class="product-side-nav" aria-label="상품 카테고리">
         <button
@@ -17,6 +22,9 @@
           {{ item.label }}
         </button>
       </nav>
+        </template>
+
+        <template #support>
 
       <div class="product-tip-card daily-finance-word-card">
         <strong>오늘의 금융 한마디</strong>
@@ -24,7 +32,9 @@
         <small v-if="todayTipLoading">문장을 불러오는 중입니다.</small>
         <small v-else-if="todayTipError">{{ todayTipError }}</small>
       </div>
-    </aside>
+        </template>
+      </AppSidebar>
+    </template>
 
     <div class="product-main">
       <div class="product-toolbar">
@@ -208,7 +218,7 @@
                 class="favorite-btn"
                 :class="{ active: item.is_favorite }"
                 type="button"
-                :title="item.is_favorite ? '관심상품 해제' : '관심상품 추가'"
+                :title="item.is_favorite ? '관심 상품 해제' : '관심 상품 추가'"
                 @click.stop="toggleFavoriteProduct(item)"
               >
                 {{ item.is_favorite ? '★' : '☆' }}
@@ -248,7 +258,7 @@
                 class="favorite-btn"
                 :class="{ active: item.is_favorite }"
                 type="button"
-                :title="item.is_favorite ? '관심상품 해제' : '관심상품 추가'"
+                :title="item.is_favorite ? '관심 상품 해제' : '관심 상품 추가'"
                 @click.stop="toggleFavoriteStock(item)"
               >
                 {{ item.is_favorite ? '★' : '☆' }}
@@ -364,7 +374,7 @@
             class="favorite-preview-panel"
           >
             <div class="favorite-empty-icon">☆</div>
-            <h2>관심상품</h2>
+            <h2>관심 상품</h2>
             <p>별표를 누르거나 상세 화면에서 관심목록에 추가한 상품이 여기에 표시됩니다.</p>
             <button class="primary-btn" type="button" @click="setProductCategory('recommended')">
               추천 상품 둘러보기
@@ -386,7 +396,7 @@
                 class="favorite-btn"
                 :class="{ active: item.favorite_type === 'stock' ? item.is_favorite : item.is_favorite || item.is_subscribed }"
                 type="button"
-                title="관심상품 해제"
+                title="관심 상품 해제"
                 @click.stop="item.favorite_type === 'stock' ? toggleFavoriteStock(item) : removeFavoriteDepositItem(item)"
               >
                 {{ item.favorite_type === 'stock' ? item.is_favorite ? '★' : '☆' : '★' }}
@@ -426,7 +436,7 @@
                 </template>
                 <template v-else>
                   <span>{{ item.best_term ? item.best_term + '개월' : '기간 정보 없음' }}</span>
-                  <span>{{ item.is_subscribed ? '관심목록 추가됨' : '별표 관심상품' }}</span>
+                  <span>{{ item.is_subscribed ? '관심목록 추가됨' : '별표 관심 상품' }}</span>
                 </template>
               </div>
             </article>
@@ -434,13 +444,15 @@
         </template>
       </template>
     </div>
-  </section>
+  </SidebarLayout>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
+import AppSidebar from '../components/AppSidebar.vue'
+import SidebarLayout from '../components/SidebarLayout.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -476,7 +488,7 @@ const productNavItems = [
   { key: 'deposit', label: '예적금', icon: '💰' },
   { key: 'stock', label: '주식', icon: '📈' },
   { key: 'spot', label: '현물', icon: '🪙' },
-  { key: 'favorites', label: '관심상품', icon: '⭐' },
+  { key: 'favorites', label: '관심 상품', icon: '⭐' },
 ]
 
 const bankLogoRules = [
@@ -547,9 +559,9 @@ const categoryMeta = {
     placeholder: '현물은 아래 조건으로 조회하세요',
   },
   favorites: {
-    title: '관심상품',
-    description: '저장한 관심상품을 모아볼 수 있는 공간입니다.',
-    placeholder: '관심상품 검색',
+    title: '관심 상품',
+    description: '저장한 관심 상품을 모아볼 수 있는 공간입니다.',
+    placeholder: '관심 상품 검색',
   },
 }
 
@@ -909,7 +921,7 @@ const loadFavoriteProducts = async () => {
     favoriteProducts.value = response.data.products || []
     favoriteStocks.value = response.data.stocks || []
   } catch (err) {
-    error.value = err.response?.data?.message || '관심상품을 불러오지 못했습니다.'
+    error.value = err.response?.data?.message || '관심 상품을 불러오지 못했습니다.'
     console.error(err)
   } finally {
     loading.value = false
@@ -998,7 +1010,7 @@ const toggleFavoriteStock = async (item) => {
       favoriteStocks.value = favoriteStocks.value.filter((stock) => stock.code !== item.code)
     }
   } catch (err) {
-    error.value = err.response?.data?.message || '관심상품을 변경하지 못했습니다.'
+    error.value = err.response?.data?.message || '관심 상품을 변경하지 못했습니다.'
     console.error(err)
   }
 }
@@ -1026,7 +1038,7 @@ const toggleFavoriteProduct = async (item) => {
       favoriteProducts.value = [updatedProduct, ...favoriteProducts.value]
     }
   } catch (err) {
-    error.value = err.response?.data?.message || '관심상품을 변경하지 못했습니다.'
+    error.value = err.response?.data?.message || '관심 상품을 변경하지 못했습니다.'
     console.error(err)
   }
 }
@@ -1065,7 +1077,7 @@ const removeFavoriteDepositItem = async (item) => {
       }
     })
   } catch (err) {
-    error.value = err.response?.data?.message || '관심상품을 제거하지 못했습니다.'
+    error.value = err.response?.data?.message || '관심 상품을 제거하지 못했습니다.'
     console.error(err)
   }
 }

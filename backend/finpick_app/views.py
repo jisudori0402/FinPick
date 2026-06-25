@@ -2241,7 +2241,7 @@ def api_favorite_stock_toggle(request, stock_code):
             "is_favorite": False,
         }
         return JsonResponse({
-            'message': '관심상품에서 제거했습니다.',
+            'message': '관심 상품에서 제거했습니다.',
             'is_favorite': False,
             'stock': stock,
         })
@@ -2266,7 +2266,7 @@ def api_favorite_stock_toggle(request, stock_code):
         market_cap=int(parse_stock_number(body.get('market_cap'))),
     )
     return JsonResponse({
-        'message': '관심상품에 추가했습니다.',
+        'message': '관심 상품에 추가했습니다.',
         'is_favorite': True,
         'stock': serialize_favorite_stock(favorite),
     })
@@ -2285,11 +2285,11 @@ def api_favorite_deposit_product_toggle(request, product_id):
     if favorite:
         favorite.delete()
         is_favorite = False
-        message = '관심상품에서 제거했습니다.'
+        message = '관심 상품에서 제거했습니다.'
     else:
         UserFavoriteDepositProduct.objects.create(user=request.user, product=product)
         is_favorite = True
-        message = '관심상품에 추가했습니다.'
+        message = '관심 상품에 추가했습니다.'
 
     return JsonResponse({
         'message': message,

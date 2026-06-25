@@ -1,13 +1,15 @@
 <template>
-  <section class="my-page">
-    <aside class="my-sidebar">
+  <SidebarLayout class="my-page" surface="soft">
+    <template #sidebar>
+      <AppSidebar>
+        <template #nav>
       <nav class="my-side-nav" aria-label="내 정보 메뉴">
         <button class="active" type="button">
           <span>♙</span>
           내 정보
         </button>
         <RouterLink to="/deposit-products?category=favorites">
-          <span>☆</span>
+          <span>⭐</span>
           관심 상품
         </RouterLink>
         <button type="button">
@@ -15,6 +17,9 @@
           내 자산
         </button>
       </nav>
+        </template>
+
+        <template #support>
 
       <div class="my-tip-card">
         <strong>더 나은 금융 습관,<br />FinPick과 함께</strong>
@@ -23,9 +28,11 @@
           <span>→</span>
         </RouterLink>
       </div>
+        </template>
+      </AppSidebar>
 
 
-    </aside>
+    </template>
 
     <div class="my-main">
       <div class="my-page-head">
@@ -219,13 +226,15 @@
         </div>
       </div>
     </div>
-  </section>
+  </SidebarLayout>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import axios from 'axios'
+import AppSidebar from '../components/AppSidebar.vue'
+import SidebarLayout from '../components/SidebarLayout.vue'
 
 const user = ref({
   username: '',

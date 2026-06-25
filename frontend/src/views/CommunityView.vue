@@ -1,9 +1,14 @@
 <template>
-  <section class="community-page community-hub-page">
-    <aside class="community-sidebar">
+  <SidebarLayout class="community-page community-hub-page" surface="white">
+    <template #sidebar>
+      <AppSidebar>
+        <template #top>
       <button class="write-button" type="button" @click="toggleComposer">
         ✎ 글 작성하기
       </button>
+        </template>
+
+        <template #nav>
 
       <nav class="community-side-nav" aria-label="커뮤니티 메뉴">
         <button
@@ -24,6 +29,9 @@
           게시판
         </button>
       </nav>
+        </template>
+
+        <template #support>
 
       <div class="youtube-tip-card trending-keyword-card">
         <div class="trending-card-head">
@@ -38,7 +46,9 @@
           </li>
         </ol>
       </div>
-    </aside>
+        </template>
+      </AppSidebar>
+    </template>
 
     <div class="community-main">
       <section v-if="activeSection === 'youtube'" class="video-section">
@@ -245,13 +255,15 @@
         </template>
       </section>
     </div>
-  </section>
+  </SidebarLayout>
 </template>
 
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
+import AppSidebar from '../components/AppSidebar.vue'
+import SidebarLayout from '../components/SidebarLayout.vue'
 
 const router = useRouter()
 
