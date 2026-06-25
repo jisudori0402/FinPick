@@ -13,6 +13,7 @@ class UserProfile(models.Model):
     saving_status = models.CharField(max_length=50, blank=True)
     invest_experience = models.CharField(max_length=50, blank=True)
     intro = models.TextField(blank=True)
+    profile_image = models.FileField(upload_to='profile_images/', blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     password_changed_at = models.DateTimeField(null=True, blank=True)
 
@@ -141,6 +142,35 @@ class AiProductRecommendation(models.Model):
 
     def __str__(self):
         return f'{self.recommendation_date} - {self.financial_type}'
+
+
+class FinancialGuide(models.Model):
+    category = models.CharField(max_length=50)
+    title = models.CharField(max_length=100)
+    content = models.TextField()
+    keywords = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['category', 'title']
+        unique_together = ('category', 'title')
+
+    def __str__(self):
+        return f'{self.category} - {self.title}'
+
+
+class SearchKeywordTrend(models.Model):
+    keyword = models.CharField(max_length=100, unique=True)
+    search_count = models.PositiveIntegerField(default=0)
+    last_searched_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-search_count', '-last_searched_at']
+
+    def __str__(self):
+        return f'{self.keyword} ({self.search_count})'
 
 
 class DepositProduct(models.Model):

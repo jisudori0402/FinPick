@@ -34,6 +34,11 @@
         </button>
       </form>
 
+      <p class="password-find-link">
+        비밀번호를 잊으셨나요?
+        <RouterLink to="/password-reset">비밀번호 찾기</RouterLink>
+      </p>
+
       <p class="signup-link">
         아직 계정이 없나요?
         <RouterLink to="/signup">회원가입</RouterLink>

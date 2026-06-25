@@ -18,24 +18,65 @@
     </div>
 
     <div v-else-if="stock">
-      <small class="detail-kicker">{{ stock.market || '주식' }}</small>
-      <h2>{{ stock.name }}</h2>
+      <div class="stock-detail-head">
+        <span class="stock-detail-logo">
+          <img v-if="stock.logo_url" :src="stock.logo_url" :alt="`${stock.name} 로고`" />
+          <template v-else>{{ stock.name?.slice(0, 1) || '주' }}</template>
+        </span>
+        <div>
+          <small class="detail-kicker">{{ stock.market || '주식' }}</small>
+          <h2>{{ stock.name }}</h2>
+        </div>
+      </div>
 
-      <p><strong>종목코드</strong> {{ stock.code || '-' }}</p>
-      <p><strong>기준일</strong> {{ formatStockDate(stock.base_date) }}</p>
-      <p><strong>현재가</strong> {{ formatWon(stock.current_price) }}</p>
-      <p>
-        <strong>전일대비</strong>
-        <span :class="{ positive: stock.change > 0, negative: stock.change < 0 }">
-          {{ formatSignedWon(stock.change) }}
-        </span>
-      </p>
-      <p>
-        <strong>등락률</strong>
-        <span :class="{ positive: stock.change_rate > 0, negative: stock.change_rate < 0 }">
-          {{ formatRate(stock.change_rate) }}
-        </span>
-      </p>
+      <div class="stock-price-grid">
+        <article class="stock-price-card main">
+          <small>현재가</small>
+          <strong>{{ formatWon(stock.current_price) }}</strong>
+          <span>기준일 {{ formatStockDate(stock.base_date) }}</span>
+        </article>
+
+        <article class="stock-price-card">
+          <small>전일 대비</small>
+          <strong :class="{ positive: stock.change > 0, negative: stock.change < 0 }">
+            {{ formatSignedWon(stock.change) }}
+          </strong>
+        </article>
+
+        <article class="stock-price-card">
+          <small>등락률</small>
+          <strong :class="{ positive: stock.change_rate > 0, negative: stock.change_rate < 0 }">
+            {{ formatRate(stock.change_rate) }}
+          </strong>
+        </article>
+      </div>
+
+      <div class="stock-info-grid">
+        <article class="stock-info-card">
+          <small>종목 코드</small>
+          <strong>{{ stock.code || '-' }}</strong>
+        </article>
+
+        <article class="stock-info-card">
+          <small>시장</small>
+          <strong>{{ stock.market || '-' }}</strong>
+        </article>
+
+        <article class="stock-info-card">
+          <small>거래량</small>
+          <strong>{{ formatNumber(stock.volume) }}</strong>
+        </article>
+
+        <article class="stock-info-card">
+          <small>시가총액</small>
+          <strong>{{ formatWon(stock.market_cap) }}</strong>
+        </article>
+
+        <article class="stock-info-card wide">
+          <small>ISIN</small>
+          <strong>{{ stock.isin_code || '-' }}</strong>
+        </article>
+      </div>
 
       <div class="button-row">
         <button
@@ -48,25 +89,6 @@
       </div>
 
       <p v-if="favoriteMessage" class="lock-note">{{ favoriteMessage }}</p>
-
-      <table class="detail-table">
-        <thead>
-          <tr>
-            <th>시장</th>
-            <th>거래량</th>
-            <th>시가총액</th>
-            <th>ISIN</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>{{ stock.market || '-' }}</td>
-            <td>{{ formatNumber(stock.volume) }}</td>
-            <td>{{ formatWon(stock.market_cap) }}</td>
-            <td>{{ stock.isin_code || '-' }}</td>
-          </tr>
-        </tbody>
-      </table>
     </div>
   </section>
 </template>

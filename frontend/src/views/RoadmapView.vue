@@ -3,7 +3,7 @@
     <div class="roadmap-title-row">
       <div>
         <h1>금융 성장 로드맵</h1>
-        <p class="roadmap-type">🧭 {{ roadmap?.type_code || '로드맵 준비 중' }}</p>
+        <p class="roadmap-type">{{ roadmap?.type_code || '로드맵 준비 중' }}</p>
       </div>
 
       <div v-if="roadmap" class="roadmap-progress-summary">
@@ -34,16 +34,13 @@
 
     <template v-else>
       <div class="roadmap-next-card">
-        <div class="target-icon" aria-hidden="true">◎</div>
+        <div class="target-icon" aria-hidden="true">🎯</div>
         <div>
           <span>다음 추천 활동</span>
           <h2>{{ nextMissionTitle }}</h2>
           <p>{{ nextMissionDescription }}</p>
         </div>
-        <div class="road-visual" aria-hidden="true">
-          <span></span>
-          <strong></strong>
-        </div>
+        <img class="road-visual" src="/home-mountain-road-cutout.png" alt="" aria-hidden="true" />
       </div>
 
       <div class="roadmap-level-list">

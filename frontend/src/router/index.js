@@ -8,6 +8,7 @@ import SignupView from '../views/SignupView.vue'
 import LoginView from '../views/LoginView.vue'
 import DashboardView from '../views/DashboardView.vue'
 import PasswordChangeView from '../views/PasswordChangeView.vue'
+import PasswordResetView from '../views/PasswordResetView.vue'
 import DiagnosisView from '../views/DiagnosisView.vue'
 import DiagnosisResultView from '../views/DiagnosisResultView.vue'
 import RoadmapView from '../views/RoadmapView.vue'
@@ -65,6 +66,11 @@ const router = createRouter({
       path: '/login',
       name: 'login',
       component: LoginView,
+    },
+    {
+      path: '/password-reset',
+      name: 'password-reset',
+      component: PasswordResetView,
     },
     {
       path: '/dashboard',

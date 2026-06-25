@@ -18,13 +18,64 @@
     </div>
 
     <div v-else-if="product">
-      <h2>{{ product.product_name }}</h2>
+      <div class="deposit-detail-head">
+        <span class="detail-kicker">{{ product.product_type_display || '예적금' }}</span>
+        <h2>{{ product.product_name }}</h2>
+      </div>
 
-      <p><strong>은행</strong> {{ product.financial_company_name }}</p>
-      <p><strong>가입 방법</strong> {{ product.join_way || '-' }}</p>
-      <p><strong>가입 대상</strong> {{ product.join_member || '-' }}</p>
-      <p><strong>우대 조건</strong> {{ product.special_condition || '-' }}</p>
-      <p><strong>기타 안내</strong> {{ product.etc_note || '-' }}</p>
+      <div class="deposit-info-grid">
+        <article class="deposit-info-card">
+          <span class="deposit-info-icon">은행</span>
+          <div>
+            <small>은행</small>
+            <strong>{{ product.financial_company_name || '-' }}</strong>
+          </div>
+        </article>
+
+        <article class="deposit-info-card">
+          <span class="deposit-info-icon">방법</span>
+          <div>
+            <small>가입 방법</small>
+            <strong>{{ product.join_way || '-' }}</strong>
+          </div>
+        </article>
+
+        <article class="deposit-info-card">
+          <span class="deposit-info-icon">대상</span>
+          <div>
+            <small>가입 대상</small>
+            <strong>{{ product.join_member || '-' }}</strong>
+          </div>
+        </article>
+      </div>
+
+      <div class="deposit-note-grid">
+        <article class="deposit-note-card">
+          <small>우대 조건</small>
+          <ul v-if="formatNoteLines(product.special_condition).length" class="deposit-note-list">
+            <li
+              v-for="line in formatNoteLines(product.special_condition)"
+              :key="line"
+            >
+              {{ line }}
+            </li>
+          </ul>
+          <p v-else>-</p>
+        </article>
+
+        <article class="deposit-note-card">
+          <small>기타 안내</small>
+          <ul v-if="formatNoteLines(product.etc_note).length" class="deposit-note-list">
+            <li
+              v-for="line in formatNoteLines(product.etc_note)"
+              :key="line"
+            >
+              {{ line }}
+            </li>
+          </ul>
+          <p v-else>-</p>
+        </article>
+      </div>
 
       <div class="button-row">
         <button
@@ -79,6 +130,14 @@ const product = ref(null)
 const loading = ref(true)
 const error = ref('')
 const joinMessage = ref('')
+
+const formatNoteLines = (text) => {
+  return String(text || '')
+    .replace(/\r\n/g, '\n')
+    .split(/\n|(?<=다\.)|(?<=요\.)|(?<=함\.)|(?<=음\.)|(?<=\))\s*,|,\s*(?=\d+\.)/g)
+    .map((line) => line.replace(/^[-ㆍ·\s]+/, '').trim())
+    .filter(Boolean)
+}
 
 const loadProduct = async () => {
   loading.value = true

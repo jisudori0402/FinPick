@@ -11,7 +11,7 @@
           :class="{ active: activeSection === 'youtube' }"
           @click="showYoutube"
         >
-          <span>▣</span>
+          <span>🔥</span>
           인기 영상
           <em>NEW</em>
         </button>
@@ -20,20 +20,23 @@
           :class="{ active: activeSection === 'board' }"
           @click="showBoard"
         >
-          <span>☷</span>
+          <span>💬</span>
           게시판
         </button>
       </nav>
 
-      <div class="youtube-tip-card">
-        <strong>금융 지식은 영상으로!</strong>
-        <p>FinPick 유튜브와 함께 똑똑하게 성장해요.</p>
-        <div class="youtube-mascot" aria-hidden="true">
-          <span>▶</span>
+      <div class="youtube-tip-card trending-keyword-card">
+        <div class="trending-card-head">
+          <strong>실시간 검색어</strong>
         </div>
-        <button type="button" @click="showYoutube">
-          유튜브 바로가기
-        </button>
+        <ol>
+          <li v-for="item in trendingKeywords" :key="item.keyword">
+            <button type="button" @click="searchTrendingKeyword(item.keyword)">
+              <span>{{ item.rank }}</span>
+              <strong>{{ item.keyword }}</strong>
+            </button>
+          </li>
+        </ol>
       </div>
     </aside>
 
@@ -262,6 +265,7 @@ const youtubeQuery = ref('금융 투자')
 const youtubeVideos = ref([])
 const youtubeLoading = ref(false)
 const youtubeError = ref('')
+const trendingKeywords = ref([])
 const loading = ref(true)
 const error = ref('')
 const showComposer = ref(false)
@@ -299,6 +303,7 @@ const searchYoutubeVideos = async () => {
     })
 
     youtubeVideos.value = response.data.videos || []
+    loadTrendingKeywords()
   } catch (err) {
     youtubeVideos.value = []
     youtubeError.value = err.response?.data?.message || '영상을 검색하지 못했습니다.'
@@ -306,6 +311,24 @@ const searchYoutubeVideos = async () => {
   } finally {
     youtubeLoading.value = false
   }
+}
+
+const loadTrendingKeywords = async () => {
+  try {
+    const response = await axios.get('http://localhost:8000/api/trending-keywords/', {
+      withCredentials: true,
+    })
+    trendingKeywords.value = response.data.keywords || []
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+const searchTrendingKeyword = (keyword) => {
+  youtubeQuery.value = keyword
+  selectedTopic.value = ''
+  activeSection.value = 'youtube'
+  searchYoutubeVideos()
 }
 
 const selectVideoTopic = (topic) => {
@@ -560,6 +583,7 @@ const showBoard = () => {
 }
 
 onMounted(() => {
+  loadTrendingKeywords()
   searchYoutubeVideos()
   loadPosts()
 })

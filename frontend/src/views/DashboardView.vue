@@ -6,17 +6,13 @@
           <span>♙</span>
           내 정보
         </button>
+        <RouterLink to="/deposit-products?category=favorites">
+          <span>☆</span>
+          관심 상품
+        </RouterLink>
         <button type="button">
-          <span>▣</span>
-          내 금융 현황
-        </button>
-        <button type="button">
-          <span>♡</span>
-          관심 목록
-        </button>
-        <button type="button">
-          <span>☑</span>
-          활동 내역
+          <span>💰</span>
+          내 자산
         </button>
       </nav>
 
@@ -28,10 +24,7 @@
         </RouterLink>
       </div>
 
-      <div class="profile-mascot" aria-hidden="true">
-        <span></span>
-        <strong>₩</strong>
-      </div>
+
     </aside>
 
     <div class="my-main">
@@ -48,8 +41,15 @@
         <div class="my-left-column">
           <section class="my-card profile-card-main">
             <div class="profile-avatar">
-              <span>{{ avatarInitial }}</span>
-              <button type="button" aria-label="프로필 사진 변경">⌘</button>
+              <img v-if="profileImageSrc" :src="profileImageSrc" alt="프로필 이미지" />
+              <span v-else>{{ avatarInitial }}</span>
+              <input
+                ref="profileImageInput"
+                type="file"
+                accept="image/*"
+                @change="handleProfileImageChange"
+              />
+              <button type="button" aria-label="프로필 사진 변경" @click="openProfileImagePicker">⌘</button>
             </div>
 
             <div class="profile-summary">
@@ -98,9 +98,19 @@
           <section class="my-card intro-card">
             <div class="card-title-row">
               <h2>내 소개</h2>
-              <button type="button" aria-label="내 소개 수정">✎</button>
+              <button type="button" aria-label="내 소개 수정" @click="toggleIntroEdit">✎</button>
             </div>
-            <p>{{ introText }}</p>
+            <textarea
+              v-if="isIntroEditing"
+              v-model="profileForm.intro"
+              rows="4"
+              placeholder="나를 소개하는 문장을 입력해 주세요."
+            ></textarea>
+            <p v-else>{{ introText }}</p>
+            <div v-if="isIntroEditing" class="intro-actions">
+              <button type="button" @click="cancelIntroEdit">취소</button>
+              <button type="button" @click="saveProfile">저장</button>
+            </div>
           </section>
         </div>
 
@@ -115,41 +125,50 @@
 
             <div class="info-form-grid">
               <label>
-                이름 <em>*</em>
+                <span class="field-label">이름 <em>*</em></span>
                 <input v-model="profileForm.name" />
               </label>
               <label>
-                이메일 <em>*</em>
-                <input v-model="profileForm.email" />
-              </label>
-              <label class="full">
-                닉네임 <em>*</em>
-                <input v-model="profileForm.nickname" />
-              </label>
-              <label class="phone-row">
-                휴대폰 번호
-                <div>
-                  <input v-model="profileForm.phone" />
-                  <button type="button">변경</button>
+                <span class="field-label">생년월일</span>
+                <div class="date-segment-input">
+                  <input
+                    ref="profileBirthYearInput"
+                    v-model="profileBirthYear"
+                    inputmode="numeric"
+                    maxlength="4"
+                    placeholder="YYYY"
+                    @input="handleProfileBirthPartInput('year')"
+                  />
+                  <span>/</span>
+                  <input
+                    ref="profileBirthMonthInput"
+                    v-model="profileBirthMonth"
+                    inputmode="numeric"
+                    maxlength="2"
+                    placeholder="MM"
+                    @input="handleProfileBirthPartInput('month')"
+                  />
+                  <span>/</span>
+                  <input
+                    ref="profileBirthDayInput"
+                    v-model="profileBirthDay"
+                    inputmode="numeric"
+                    maxlength="2"
+                    placeholder="DD"
+                    @input="handleProfileBirthPartInput('day')"
+                  />
                 </div>
               </label>
               <label>
-                생년월일
-                <input v-model="profileForm.birth_date" type="date" />
+                <span class="field-label">아이디 <em>*</em></span>
+                <input v-model="profileForm.username" />
               </label>
-              <fieldset>
-                <legend>성별</legend>
-                <label>
-                  <input v-model="profileForm.gender" type="radio" value="male" />
-                  남성
-                </label>
-                <label>
-                  <input v-model="profileForm.gender" type="radio" value="female" />
-                  여성
-                </label>
-              </fieldset>
               <label>
-                거주 지역
+                <span class="field-label">이메일 <em>*</em></span>
+                <input v-model="profileForm.email" type="email" />
+              </label>
+              <label>
+                <span class="field-label">거주 지역</span>
                 <select v-model="profileForm.region">
                   <option>서울특별시</option>
                   <option>경기도</option>
@@ -159,7 +178,7 @@
                 </select>
               </label>
               <label>
-                직업
+                <span class="field-label">직업</span>
                 <select v-model="profileForm.job">
                   <option>직장인</option>
                   <option>학생</option>
@@ -172,7 +191,7 @@
 
             <div class="member-actions">
               <span>{{ saveMessage }}</span>
-              <button class="primary-btn" type="button" @click="saveProfilePreview">
+              <button class="primary-btn" type="button" @click="saveProfile">
                 저장하기
               </button>
             </div>
@@ -185,7 +204,7 @@
             </div>
 
             <div class="password-body">
-              <div class="lock-icon">▢</div>
+              <div class="lock-icon">🔒</div>
               <div>
                 <span>마지막 변경일</span>
                 <strong>{{ passwordChangedAt }}</strong>
@@ -224,6 +243,7 @@ const profile = ref({
   invest_experience: '',
   birth_date: '',
   created_at: '',
+  profile_image_url: '',
 })
 
 const diagnosisResult = ref(null)
@@ -231,17 +251,24 @@ const roadmap = ref(null)
 const typeImageErrors = ref({})
 const loading = ref(true)
 const saveMessage = ref('')
+const isIntroEditing = ref(false)
 const passwordChangedAt = ref(localStorage.getItem('passwordChangedAt') || '변경 이력 없음')
+const profileBirthYear = ref('')
+const profileBirthMonth = ref('')
+const profileBirthDay = ref('')
+const profileBirthYearInput = ref(null)
+const profileBirthMonthInput = ref(null)
+const profileBirthDayInput = ref(null)
+const profileImageInput = ref(null)
 
 const profileForm = ref({
   name: '',
+  username: '',
   email: '',
-  nickname: '',
-  phone: '010-1234-5678',
   birth_date: '',
-  gender: 'male',
   region: '서울특별시',
   job: '직장인',
+  intro: '',
 })
 
 const typeCopy = {
@@ -287,6 +314,8 @@ const displayName = computed(() => {
 const avatarInitial = computed(() => {
   return displayName.value.slice(0, 1).toUpperCase()
 })
+
+const profileImageSrc = computed(() => profile.value.profile_image_url || '')
 
 const joinedAt = computed(() => {
   return profile.value.created_at || '2024.03.15'
@@ -377,6 +406,10 @@ const markFinancialTypeImageError = () => {
 }
 
 const introText = computed(() => {
+  if (profile.value.intro) {
+    return profile.value.intro
+  }
+
   const income = profile.value.monthly_income ? `월 소득 ${profile.value.monthly_income}만원` : '소득 정보를 준비 중'
   const saving = profile.value.saving_status || '저축 습관을 만들어가는 중'
   return `${income}, ${saving}. 차근차근 자산을 키워가고 있어요.`
@@ -384,11 +417,13 @@ const introText = computed(() => {
 
 const syncProfileForm = () => {
   profileForm.value.name = user.value.name || user.value.username || ''
+  profileForm.value.username = user.value.username || ''
   profileForm.value.email = user.value.email || ''
-  profileForm.value.nickname = displayName.value
   profileForm.value.birth_date = profile.value.birth_date || ''
   profileForm.value.job = profile.value.job || '직장인'
   profileForm.value.region = profile.value.residence_type || '서울특별시'
+  profileForm.value.intro = profile.value.intro || introText.value
+  syncProfileBirthParts()
 }
 
 const loadDiagnosisResult = async () => {
@@ -458,9 +493,137 @@ const loadRoadmap = async () => {
     console.error(err)
   }
 }
+const saveProfile = async () => {
+  saveMessage.value = ''
+  syncProfileBirthDate()
 
-const saveProfilePreview = () => {
-  saveMessage.value = '프로필 저장 기능은 다음 단계에서 연결할 예정입니다.'
+  const formData = new FormData()
+  formData.append('name', profileForm.value.name)
+  formData.append('username', profileForm.value.username)
+  formData.append('email', profileForm.value.email)
+  formData.append('birth_date', profileForm.value.birth_date)
+  formData.append('job', profileForm.value.job)
+  formData.append('residence_type', profileForm.value.region)
+  formData.append('intro', profileForm.value.intro)
+
+  try {
+    const response = await axios.post(
+      'http://localhost:8000/api/profile/',
+      formData,
+      {
+        withCredentials: true,
+      },
+    )
+
+    user.value = {
+      ...user.value,
+      name: response.data.profile?.name || profileForm.value.name,
+      username: response.data.profile?.username || profileForm.value.username,
+      email: response.data.profile?.email || profileForm.value.email,
+    }
+    localStorage.setItem('username', user.value.username)
+    localStorage.setItem('email', user.value.email)
+    profile.value = {
+      ...profile.value,
+      birth_date: response.data.profile?.birth_date || '',
+      age: response.data.profile?.age || '',
+      job: response.data.profile?.job || '',
+      residence_type: response.data.profile?.residence_type || '',
+      intro: response.data.profile?.intro || '',
+      profile_image_url: response.data.profile?.profile_image_url || profile.value.profile_image_url || '',
+    }
+    saveMessage.value = '회원 정보가 변경되었습니다.'
+    isIntroEditing.value = false
+    syncProfileForm()
+  } catch (err) {
+    saveMessage.value = err.response?.data?.message || '회원 정보를 저장하지 못했습니다.'
+    console.error(err)
+  }
+}
+
+const openProfileImagePicker = () => {
+  profileImageInput.value?.click()
+}
+
+const uploadProfileImage = async (file) => {
+  saveMessage.value = ''
+  syncProfileBirthDate()
+
+  const formData = new FormData()
+  formData.append('name', profileForm.value.name)
+  formData.append('username', profileForm.value.username)
+  formData.append('email', profileForm.value.email)
+  formData.append('birth_date', profileForm.value.birth_date)
+  formData.append('job', profileForm.value.job)
+  formData.append('residence_type', profileForm.value.region)
+  formData.append('intro', profileForm.value.intro)
+  formData.append('profile_image', file)
+
+  try {
+    const response = await axios.post('http://localhost:8000/api/profile/', formData, {
+      withCredentials: true,
+    })
+
+    profile.value = {
+      ...profile.value,
+      profile_image_url: response.data.profile?.profile_image_url || '',
+    }
+    saveMessage.value = '프로필 이미지가 변경되었습니다.'
+  } catch (err) {
+    saveMessage.value = err.response?.data?.message || '프로필 이미지를 저장하지 못했습니다.'
+    console.error(err)
+  }
+}
+
+const handleProfileImageChange = async (event) => {
+  const file = event.target.files?.[0]
+  if (!file) {
+    return
+  }
+
+  await uploadProfileImage(file)
+  event.target.value = ''
+}
+
+const syncProfileBirthParts = () => {
+  const [year = '', month = '', day = ''] = (profileForm.value.birth_date || '').split('-')
+  profileBirthYear.value = year
+  profileBirthMonth.value = month
+  profileBirthDay.value = day
+}
+
+const syncProfileBirthDate = () => {
+  const year = profileBirthYear.value
+  const month = profileBirthMonth.value
+  const day = profileBirthDay.value
+  profileForm.value.birth_date = year && month && day
+    ? `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+    : ''
+}
+
+const handleProfileBirthPartInput = (part) => {
+  profileBirthYear.value = profileBirthYear.value.replace(/\D/g, '').slice(0, 4)
+  profileBirthMonth.value = profileBirthMonth.value.replace(/\D/g, '').slice(0, 2)
+  profileBirthDay.value = profileBirthDay.value.replace(/\D/g, '').slice(0, 2)
+  syncProfileBirthDate()
+
+  if (part === 'year' && profileBirthYear.value.length === 4) {
+    profileBirthMonthInput.value?.focus()
+  }
+
+  if (part === 'month' && profileBirthMonth.value.length === 2) {
+    profileBirthDayInput.value?.focus()
+  }
+}
+
+const toggleIntroEdit = () => {
+  isIntroEditing.value = true
+  profileForm.value.intro = profile.value.intro || introText.value
+}
+
+const cancelIntroEdit = () => {
+  isIntroEditing.value = false
+  profileForm.value.intro = profile.value.intro || introText.value
 }
 
 onMounted(async () => {

@@ -22,9 +22,7 @@
         </div>
 
         <div class="result-mascot" aria-hidden="true">
-          <span class="leaf left"></span>
-          <span class="leaf right"></span>
-          <strong>•</strong>
+          <img src="/diagnosis-result-character.png" alt="" />
         </div>
       </div>
 
@@ -32,7 +30,12 @@
         <div class="result-card readiness-section">
           <div class="card-title-row">
             <h2>금융 건강도</h2>
-            <span class="info-dot">i</span>
+            <span class="info-tooltip" tabindex="0">
+              i
+              <span class="tooltip-bubble">
+                진단 답변의 저축 습관, 소비 관리, 투자 준비도, 목표 명확도를 100점 기준으로 환산한 점수예요.
+              </span>
+            </span>
           </div>
 
           <div class="readiness-body">
@@ -68,12 +71,25 @@
               </div>
             </div>
           </div>
+
+          <div class="readiness-comment">
+            <span class="quote-mark">“</span>
+            <div>
+              <h2>FinPick 코멘트</h2>
+              <p>{{ result.finpick_comment }}</p>
+            </div>
+          </div>
         </div>
 
         <div class="result-card type-card">
           <div class="card-title-row">
             <h2>나의 금융 유형</h2>
-            <span class="info-dot">i</span>
+            <span class="info-tooltip" tabindex="0">
+              i
+              <span class="tooltip-bubble">
+                소득과 지출 균형, 저축 상태, 투자 경험, 금융 목표 답변을 종합해 가장 가까운 유형으로 분류해요.
+              </span>
+            </span>
           </div>
 
           <div class="type-avatar type-character-avatar">
@@ -111,14 +127,6 @@
               {{ item }}
             </li>
           </ul>
-        </div>
-      </div>
-
-      <div class="result-card comment-section">
-        <span class="quote-mark">“</span>
-        <div>
-          <h2>FinPick 코멘트</h2>
-          <p>{{ result.finpick_comment }}</p>
         </div>
       </div>
 
@@ -304,6 +312,7 @@ const profileScoreItems = computed(() => {
     }
   })
 })
+
 
 const loadLatestDiagnosis = async () => {
   const savedResult = localStorage.getItem('latestDiagnosisResult')

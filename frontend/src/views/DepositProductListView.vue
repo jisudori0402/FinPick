@@ -2,8 +2,7 @@
   <section class="products-page product-hub-page">
     <aside class="product-sidebar">
       <div class="product-mascot" aria-hidden="true">
-        <span></span>
-        <strong>F</strong>
+        <img src="/product-sidebar-character.png" alt="" />
       </div>
 
       <nav class="product-side-nav" aria-label="상품 카테고리">
@@ -19,12 +18,11 @@
         </button>
       </nav>
 
-      <div class="product-tip-card">
-        <strong>FinPick TIP</strong>
-        <p>나에게 딱 맞는 상품을 찾으면 금융 목표 달성이 더 쉬워져요.</p>
-        <button type="button" @click="setProductCategory('deposit')">
-          상품 찾기 가이드
-        </button>
+      <div class="product-tip-card daily-finance-word-card">
+        <strong>오늘의 금융 한마디</strong>
+        <p>{{ todayTip }}</p>
+        <small v-if="todayTipLoading">문장을 불러오는 중입니다.</small>
+        <small v-else-if="todayTipError">{{ todayTipError }}</small>
       </div>
     </aside>
 
@@ -52,7 +50,9 @@
 
         <div class="recommend-card">
           <div class="recommend-card-head">
-            <div class="recommend-icon piggy"></div>
+            <div class="recommend-icon category-image-icon">
+              <img src="/product_category_icons/deposit-piggy.png" alt="예적금 아이콘" />
+            </div>
             <div>
               <h2>예적금</h2>
               <p>안정적으로 자산을 모으고 이자를 받아보세요.</p>
@@ -70,9 +70,19 @@
               class="recommend-row"
               @click="openDepositProduct(item.id)"
             >
-              <span class="row-icon bank-icon">{{ item.financial_company_name?.slice(0, 1) || '예' }}</span>
+              <span class="row-icon bank-icon">
+                <img
+                  v-if="getBankLogoUrl(item.financial_company_name)"
+                  :src="getBankLogoUrl(item.financial_company_name)"
+                  :alt="`${item.financial_company_name} 로고`"
+                />
+                <template v-else>{{ item.financial_company_name?.slice(0, 1) || '예' }}</template>
+              </span>
               <div>
                 <strong>{{ item.product_name }}</strong>
+                <small v-if="item.recommendation_reason" class="recommend-reason">
+                  {{ item.recommendation_reason }}
+                </small>
                 <small>최고 연 {{ item.max_interest_rate || item.interest_rate || '-' }}%</small>
               </div>
               <span class="row-arrow">›</span>
@@ -86,7 +96,9 @@
 
         <div class="recommend-card">
           <div class="recommend-card-head">
-            <div class="recommend-icon stock"></div>
+            <div class="recommend-icon category-image-icon">
+              <img src="/product_category_icons/stock-chart.png" alt="주식 아이콘" />
+            </div>
             <div>
               <h2>주식</h2>
               <p>시장 가능성이 높은 기업에 투자해보세요.</p>
@@ -104,7 +116,10 @@
               class="recommend-row"
               @click="openStockProduct(item.code)"
             >
-              <span class="row-icon stock-icon">{{ item.name?.slice(0, 1) || '주' }}</span>
+              <span class="row-icon stock-icon">
+                <img v-if="item.logo_url" :src="item.logo_url" :alt="`${item.name} 로고`" />
+                <template v-else>{{ item.name?.slice(0, 1) || '주' }}</template>
+              </span>
               <div>
                 <strong>{{ item.name }}</strong>
                 <small>{{ formatWon(item.current_price) }}</small>
@@ -121,42 +136,6 @@
           </button>
         </div>
 
-        <div class="investment-test-card">
-          <div class="mini-mascot" aria-hidden="true">
-            <span></span>
-          </div>
-          <div>
-            <h2>나의 투자 성향에 맞는 맞춤 상품을 찾고 싶다면?</h2>
-            <p>간단한 투자 성향 테스트를 통해 최적의 상품을 추천받아보세요.</p>
-          </div>
-          <RouterLink class="primary-btn" to="/diagnosis">
-            투자 성향 테스트 시작
-            <span aria-hidden="true">›</span>
-          </RouterLink>
-        </div>
-
-        <div class="product-benefits">
-          <div>
-            <span>♢</span>
-            <strong>안전한 금융 상품</strong>
-            <p>검증된 금융기관의 상품 추천</p>
-          </div>
-          <div>
-            <span>⌕</span>
-            <strong>비교하고 선택</strong>
-            <p>여러 상품을 한눈에 비교</p>
-          </div>
-          <div>
-            <span>♡</span>
-            <strong>관심상품 저장</strong>
-            <p>나중에 다시 확인할 수 있어요</p>
-          </div>
-          <div>
-            <span>▣</span>
-            <strong>보안 안심</strong>
-            <p>개인정보는 안전하게 보호돼요</p>
-          </div>
-        </div>
       </div>
 
       <template v-else>
@@ -235,6 +214,14 @@
                 {{ item.is_favorite ? '★' : '☆' }}
               </button>
 
+              <span class="bank-card-logo">
+                <img
+                  v-if="getBankLogoUrl(item.financial_company_name)"
+                  :src="getBankLogoUrl(item.financial_company_name)"
+                  :alt="`${item.financial_company_name} 로고`"
+                />
+                <template v-else>{{ item.financial_company_name?.slice(0, 1) || '예' }}</template>
+              </span>
               <small>{{ item.product_type === 'deposit' ? '예금' : '적금' }}</small>
               <h3>{{ item.product_name }}</h3>
               <p>{{ item.financial_company_name }}</p>
@@ -267,6 +254,10 @@
                 {{ item.is_favorite ? '★' : '☆' }}
               </button>
 
+              <span class="stock-card-logo">
+                <img v-if="item.logo_url" :src="item.logo_url" :alt="`${item.name} 로고`" />
+                <template v-else>{{ item.name?.slice(0, 1) || '주' }}</template>
+              </span>
               <small>{{ item.market || '주식' }}</small>
               <h3>{{ item.name }}</h3>
               <p>{{ item.code }}</p>
@@ -334,21 +325,21 @@
               v-if="spotChartPoints"
               :key="`${spotFilters.asset}-${spotPrices.length}-${spotDateRange}`"
               class="spot-chart"
-              viewBox="0 0 720 320"
+              viewBox="0 0 760 350"
               preserveAspectRatio="none"
             >
               <g v-for="tick in spotYAxisTicks" :key="`y-${tick.label}`">
-                <line class="spot-grid" :x1="44" :y1="tick.y" :x2="696" :y2="tick.y"></line>
-                <text class="spot-label" :x="38" :y="tick.y + 4" text-anchor="end">{{ tick.label }}</text>
+                <line class="spot-grid" :x1="76" :y1="tick.y" :x2="690" :y2="tick.y"></line>
+                <text class="spot-label" :x="68" :y="tick.y + 4" text-anchor="end">{{ tick.label }}</text>
               </g>
 
               <g v-for="tick in spotXAxisTicks" :key="`x-${tick.label}`">
-                <line class="spot-grid" :x1="tick.x" :y1="286" :x2="tick.x" :y2="292"></line>
-                <text class="spot-label" :x="tick.x" y="308" text-anchor="middle">{{ tick.label }}</text>
+                <line class="spot-grid" :x1="tick.x" :y1="292" :x2="tick.x" :y2="298"></line>
+                <text class="spot-label" :x="tick.x" y="316" text-anchor="middle">{{ tick.label }}</text>
               </g>
 
-              <line class="spot-axis" x1="44" y1="24" x2="44" y2="286"></line>
-              <line class="spot-axis" x1="44" y1="286" x2="696" y2="286"></line>
+              <line class="spot-axis" x1="76" y1="28" x2="76" y2="292"></line>
+              <line class="spot-axis" x1="76" y1="292" x2="690" y2="292"></line>
               <text class="spot-title" x="44" y="16">가격($)</text>
               <text class="spot-title" x="696" y="318" text-anchor="end">날짜</text>
               <polyline :points="spotChartPoints"></polyline>
@@ -372,7 +363,7 @@
             v-if="productCategory === 'favorites' && !filteredFavoriteItems.length"
             class="favorite-preview-panel"
           >
-            <div class="favorite-empty-icon">♡</div>
+            <div class="favorite-empty-icon">☆</div>
             <h2>관심상품</h2>
             <p>별표를 누르거나 상세 화면에서 관심목록에 추가한 상품이 여기에 표시됩니다.</p>
             <button class="primary-btn" type="button" @click="setProductCategory('recommended')">
@@ -401,6 +392,18 @@
                 {{ item.favorite_type === 'stock' ? item.is_favorite ? '★' : '☆' : '★' }}
               </button>
 
+              <span v-if="item.favorite_type === 'stock'" class="stock-card-logo">
+                <img v-if="item.logo_url" :src="item.logo_url" :alt="`${item.name} 로고`" />
+                <template v-else>{{ item.name?.slice(0, 1) || '주' }}</template>
+              </span>
+              <span v-else class="bank-card-logo">
+                <img
+                  v-if="getBankLogoUrl(item.financial_company_name)"
+                  :src="getBankLogoUrl(item.financial_company_name)"
+                  :alt="`${item.financial_company_name} 로고`"
+                />
+                <template v-else>{{ item.financial_company_name?.slice(0, 1) || '예' }}</template>
+              </span>
               <small>{{ item.favorite_type === 'stock' ? item.market || '주식' : item.product_type === 'deposit' ? '예금' : '적금' }}</small>
               <h3>{{ item.favorite_type === 'stock' ? item.name : item.product_name }}</h3>
               <p>{{ item.favorite_type === 'stock' ? item.code : item.financial_company_name }}</p>
@@ -456,23 +459,47 @@ const aiDepositProducts = ref([])
 const aiStockProducts = ref([])
 const productCompanies = ref([])
 const stockMarkets = ref([])
-const recommendations = ref([])
 const loading = ref(false)
 const error = ref('')
 const spotPrices = ref([])
 const spotMessage = ref('')
 const stockMessage = ref('')
 const aiRecommendationMessage = ref('')
+const todayTip = ref('작은 저축 습관이 내일의 선택지를 넓혀줘요.')
+const todayTipLoading = ref(false)
+const todayTipError = ref('')
 let depositRequestSeq = 0
 let stockRequestSeq = 0
 
 const productNavItems = [
-  { key: 'recommended', label: '추천 상품', icon: '⌂' },
-  { key: 'deposit', label: '예적금', icon: '▥' },
-  { key: 'stock', label: '주식', icon: '♧' },
-  { key: 'spot', label: '현물', icon: '◷' },
-  { key: 'favorites', label: '관심상품', icon: '♡' },
+  { key: 'recommended', label: '추천 상품', icon: '✨' },
+  { key: 'deposit', label: '예적금', icon: '💰' },
+  { key: 'stock', label: '주식', icon: '📈' },
+  { key: 'spot', label: '현물', icon: '🪙' },
+  { key: 'favorites', label: '관심상품', icon: '⭐' },
 ]
+
+const bankLogoRules = [
+  { keywords: ['신한'], file: 'shinhan.png' },
+  { keywords: ['국민', 'KB'], file: 'kb.png' },
+  { keywords: ['하나'], file: 'hana.png' },
+  { keywords: ['우리'], file: 'woori.png' },
+  { keywords: ['농협', 'NH'], file: 'nonghyup.png' },
+  { keywords: ['기업', 'IBK'], file: 'ibk.png' },
+  { keywords: ['카카오'], file: 'kakao.png' },
+  { keywords: ['케이뱅크', '케이은행', 'K뱅크', 'Kbank'], file: 'kbank.png' },
+  { keywords: ['토스'], file: 'toss.png' },
+  { keywords: ['SC', '스탠다드차타드', '제일'], file: 'sc.png' },
+]
+
+const getBankLogoUrl = (companyName = '') => {
+  const normalizedName = String(companyName).toLowerCase()
+  const matched = bankLogoRules.find((rule) => {
+    return rule.keywords.some((keyword) => normalizedName.includes(keyword.toLowerCase()))
+  })
+
+  return matched ? `/bank_logos/${matched.file}` : ''
+}
 
 const productFilters = ref({
   q: '',
@@ -611,10 +638,10 @@ const filteredFavoriteItems = computed(() => {
 })
 
 const topDepositProducts = computed(() => {
-  return aiDepositProducts.value.length ? aiDepositProducts.value : depositProducts.value.slice(0, 3)
+  return aiDepositProducts.value.length ? aiDepositProducts.value.slice(0, 5) : depositProducts.value.slice(0, 5)
 })
 const topStockProducts = computed(() => {
-  return aiStockProducts.value.length ? aiStockProducts.value : stockProducts.value.slice(0, 3)
+  return aiStockProducts.value.length ? aiStockProducts.value.slice(0, 5) : stockProducts.value.slice(0, 5)
 })
 
 const spotAssetName = computed(() => {
@@ -653,9 +680,9 @@ const spotChartDots = computed(() => {
     return []
   }
 
-  const width = 720
-  const height = 320
-  const padding = { left: 44, right: 24, top: 24, bottom: 34 }
+  const width = 760
+  const height = 350
+  const padding = { left: 76, right: 70, top: 28, bottom: 58 }
   const values = spotPrices.value.map((item) => Number(item.price))
   const min = Math.min(...values)
   const max = Math.max(...values)
@@ -691,7 +718,7 @@ const spotYAxisTicks = computed(() => {
   return [0, 1, 2, 3, 4].map((step) => {
     const ratio = step / 4
     const price = max - range * ratio
-    const y = 24 + ratio * (286 - 24)
+    const y = 28 + ratio * (292 - 28)
 
     return {
       y: Number(y.toFixed(2)),
@@ -839,18 +866,34 @@ const loadRecommendations = async () => {
   try {
     aiRecommendationMessage.value = 'AI가 금융 유형에 맞는 상품을 추천하고 있어요.'
 
-    const response = await axios.get('http://localhost:8000/api/ai/product-recommendations/', {
+    const response = await axios.get('http://localhost:8000/api/ai/recommend-products/', {
       withCredentials: true,
     })
 
-    aiDepositProducts.value = response.data.deposits || []
+    aiDepositProducts.value = response.data.products || response.data.deposits || []
     aiStockProducts.value = response.data.stocks || []
-    aiRecommendationMessage.value = response.data.cached
-      ? `${response.data.financial_type} 유형 기준 오늘의 추천 상품이에요.`
-      : `${response.data.financial_type} 유형에 맞춰 AI가 추천했어요.`
+    aiRecommendationMessage.value = response.data.message || `${response.data.financial_type || '금융 새싹'} 유형 기준 오늘의 추천 상품이에요.`
   } catch (err) {
     aiRecommendationMessage.value = err.response?.data?.message || 'AI 추천을 불러오지 못해 기본 상품을 보여드려요.'
     console.error(err)
+  }
+}
+
+const loadTodayTip = async () => {
+  todayTipLoading.value = true
+  todayTipError.value = ''
+
+  try {
+    const response = await axios.get('http://localhost:8000/api/ai/today-message/', {
+      withCredentials: true,
+    })
+    if (response.data.message) {
+      todayTip.value = response.data.message
+    }
+  } catch (err) {
+    todayTipError.value = err.response?.data?.message || '오늘의 금융 한마디를 불러오지 못했습니다.'
+  } finally {
+    todayTipLoading.value = false
   }
 }
 
@@ -1092,6 +1135,7 @@ const formatStockDate = (dateText) => {
 }
 
 onMounted(() => {
+  loadTodayTip()
   loadDepositProducts()
   loadStockProducts()
   loadRecommendations()

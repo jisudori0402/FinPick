@@ -10,42 +10,17 @@
 
         <RouterLink class="primary-btn hero-cta" :to="diagnosisStartLink">
           금융 진단 시작하기
-          <span aria-hidden="true">-></span>
         </RouterLink>
       </div>
 
       <div class="journey-visual" aria-label="금융 성장 단계 미리보기">
-        <div class="cloud cloud-one"></div>
-        <div class="cloud cloud-two"></div>
-        <svg class="journey-path" viewBox="0 0 440 392" aria-hidden="true">
-          <path class="mountain-soft" d="M 32 380 L 196 118 L 350 380 Z" />
-          <path class="mountain-main" d="M 104 380 L 316 42 L 438 380 Z" />
-          <path
-            class="climb-road"
-            d="M 118 386 C 196 346 226 314 190 278 C 154 242 178 212 258 181 C 342 148 314 103 384 58 L 406 78 C 344 116 378 160 288 200 C 214 233 208 255 240 286 C 282 328 238 370 158 392 Z"
-          />
-          <path
-            class="climb-road-light"
-            d="M 150 366 C 218 329 240 307 210 280 C 176 249 202 228 268 201 C 342 170 334 125 384 88"
-          />
-          <path class="summit-glow" d="M 322 42 C 372 30 413 56 414 101 C 372 80 342 84 306 112 C 292 82 298 56 322 42 Z" />
-        </svg>
-        <div class="flag"></div>
-        <span class="trail-dot dot-one" aria-hidden="true"></span>
-        <span class="trail-dot dot-two" aria-hidden="true"></span>
-        <span class="trail-dot dot-three" aria-hidden="true"></span>
-        <span class="trail-dot dot-four" aria-hidden="true"></span>
-        <span class="scene-tree tree-one" aria-hidden="true"></span>
-        <span class="scene-tree tree-two" aria-hidden="true"></span>
-        <span class="scene-tree tree-three" aria-hidden="true"></span>
-        <span class="scene-leaf" aria-hidden="true"></span>
+        <img class="journey-illustration" src="/home-mountain-road-cutout.png" alt="" />
 
         <div class="level-card level-one">
           <span class="level-icon wallet-icon"></span>
           <strong>시작</strong>
           <p>금융 기초 다지기</p>
           <small>비상금 만들기</small>
-          <span class="level-arrow" aria-hidden="true">›</span>
         </div>
 
         <div class="level-card level-two">
@@ -53,7 +28,6 @@
           <strong>성장</strong>
           <p>목돈 마련하기</p>
           <small>저축 시작하기</small>
-          <span class="level-arrow" aria-hidden="true">›</span>
         </div>
 
         <div class="level-card level-three">
@@ -61,7 +35,6 @@
           <strong>도약</strong>
           <p>자산 성장하기</p>
           <small>투자 시작하기</small>
-          <span class="level-arrow" aria-hidden="true">›</span>
         </div>
       </div>
 
@@ -88,7 +61,6 @@
       >
         <div class="card-title-row">
           <h2>현재 금융 레벨</h2>
-          <span class="info-dot">i</span>
         </div>
 
         <div class="level-content">
@@ -105,19 +77,17 @@
             <strong>{{ currentLevelLabel }}</strong>
             <h3>{{ financialTypeName }}</h3>
             <p>{{ levelDescription }}</p>
+            <div class="level-progress">
+              <span :style="{ width: dashboardProgress + '%' }"></span>
+            </div>
+            <small>{{ dashboardProgress }}%</small>
           </div>
         </div>
-
-        <div class="level-progress">
-          <span :style="{ width: dashboardProgress + '%' }"></span>
-        </div>
-        <small>{{ dashboardProgress }}%</small>
       </RouterLink>
 
       <div v-else class="home-card level-summary locked">
         <div class="card-title-row">
           <h2>현재 금융 레벨</h2>
-          <span class="lock-dot">잠김</span>
         </div>
         <div class="locked-state">
           <strong>로그인이 필요해요</strong>
@@ -129,7 +99,7 @@
       <article class="home-card goal-card">
         <h2>다음 목표</h2>
         <div class="goal-body">
-          <span class="piggy-large" aria-hidden="true"></span>
+          <span class="goal-target-icon" aria-hidden="true"></span>
           <div>
             <strong>{{ nextMissionTitle }}</strong>
             <p>{{ nextMissionDescription }}</p>
@@ -144,7 +114,7 @@
       <article class="home-card product-card-home">
         <div class="card-title-row">
           <h2>추천 상품</h2>
-          <RouterLink class="more-link" to="/deposit-products">더보기</RouterLink>
+          <RouterLink class="more-link" to="/deposit-products?category=recommended">더보기</RouterLink>
         </div>
 
         <div class="mini-product-list">
@@ -154,12 +124,14 @@
             class="mini-product"
             :to="product.to"
           >
-            <span class="product-icon" :class="product.icon"></span>
+            <span class="mini-product-logo" :class="product.kind">
+              <img v-if="product.logoUrl" :src="product.logoUrl" :alt="`${product.name} 로고`" />
+              <template v-else>{{ product.name?.slice(0, 1) || '상' }}</template>
+            </span>
             <div>
               <strong>{{ product.name }}</strong>
               <small>{{ product.company }}</small>
             </div>
-            <em>추천</em>
           </RouterLink>
         </div>
       </article>
@@ -188,6 +160,7 @@ const name = ref('')
 const diagnosisResult = ref(null)
 const roadmap = ref(null)
 const favoriteProducts = ref([])
+const aiRecommendedProducts = ref([])
 const typeImageErrors = ref({})
 const todayTip = ref('월 소득의 10%만 저축해도 1년 뒤 360만원을 모을 수 있어요.')
 const todayTipLoading = ref(false)
@@ -224,7 +197,7 @@ const fallbackMissions = [
   },
   {
     title: '비상금 100만원 만들기',
-    description: '목표 달성까지 75만원 남았어요.',
+    description: '나에게 맞는 첫 저축 목표를 준비해보세요.',
     is_completed: false,
   },
   {
@@ -257,6 +230,28 @@ const fallbackProducts = [
     to: '/deposit-products',
   },
 ]
+
+const bankLogoRules = [
+  { keywords: ['신한'], file: 'shinhan.png' },
+  { keywords: ['국민', 'KB'], file: 'kb.png' },
+  { keywords: ['하나'], file: 'hana.png' },
+  { keywords: ['우리'], file: 'woori.png' },
+  { keywords: ['농협', 'NH'], file: 'nonghyup.png' },
+  { keywords: ['기업', 'IBK'], file: 'ibk.png' },
+  { keywords: ['카카오'], file: 'kakao.png' },
+  { keywords: ['케이뱅크', '케이은행', 'K뱅크', 'Kbank'], file: 'kbank.png' },
+  { keywords: ['토스'], file: 'toss.png' },
+  { keywords: ['SC', '스탠다드차타드', '제일'], file: 'sc.png' },
+]
+
+const getBankLogoUrl = (companyName = '') => {
+  const normalizedName = String(companyName).toLowerCase()
+  const matched = bankLogoRules.find((rule) => {
+    return rule.keywords.some((keyword) => normalizedName.includes(keyword.toLowerCase()))
+  })
+
+  return matched ? `/bank_logos/${matched.file}` : ''
+}
 
 const typeCharacterImages = {
   안정형: '/financial-types/stable-saver.png',
@@ -382,23 +377,35 @@ const nextMissionDescription = computed(() => {
   return (
     nextMission.value?.description ||
     nextMission.value?.mission_description ||
-    '목표 달성까지 75만원 남았어요.'
+    '다음 단계로 이어갈 금융 활동이에요.'
   )
 })
 
 const recommendedProducts = computed(() => {
-  if (!favoriteProducts.value.length) {
-    return fallbackProducts
+  if (aiRecommendedProducts.value.length) {
+    return aiRecommendedProducts.value
   }
 
-  return favoriteProducts.value.slice(0, 3).map((item, index) => ({
+  if (favoriteProducts.value.length) {
+    return favoriteProducts.value.slice(0, 3).map((item, index) => ({
     key: item.id || `favorite-${index}`,
     name: item.product_name,
     company: item.financial_company_name,
     icon: index === 0 ? 'bank' : index === 1 ? 'piggy' : 'card',
+    kind: 'deposit',
+    logoUrl: getBankLogoUrl(item.financial_company_name),
     to: `/deposit-products/${item.id}`,
-  }))
+    }))
+  }
+
+  return fallbackProducts
 })
+
+const pickRandomItems = (items, count = 3) => {
+  return [...items]
+    .sort(() => Math.random() - 0.5)
+    .slice(0, count)
+}
 
 const syncHomeState = () => {
   isLoggedIn.value = localStorage.getItem('isLoggedIn') === 'true'
@@ -446,12 +453,45 @@ const loadHomeDashboard = async () => {
   }
 }
 
+const loadAiRecommendedProducts = async () => {
+  try {
+    const response = await axios.get('http://localhost:8000/api/ai/product-recommendations/', {
+      withCredentials: true,
+    })
+
+    const deposits = (response.data.deposits || []).map((item) => ({
+      key: `deposit-${item.id}`,
+      name: item.product_name,
+      company: item.financial_company_name,
+      icon: item.product_type === 'deposit' ? 'bank' : 'piggy',
+      kind: 'deposit',
+      logoUrl: getBankLogoUrl(item.financial_company_name),
+      to: `/deposit-products/${item.id}`,
+    }))
+    const stocks = (response.data.stocks || []).map((item) => ({
+      key: `stock-${item.code}`,
+      name: item.name,
+      company: `${item.market || '주식'} · ${item.change_rate > 0 ? '+' : ''}${Number(item.change_rate || 0).toFixed(2)}%`,
+      icon: 'card',
+      kind: 'stock',
+      logoUrl: item.logo_url || '',
+      to: `/stocks/${item.code}`,
+    }))
+
+    aiRecommendedProducts.value = pickRandomItems([...deposits, ...stocks], 3)
+  } catch (err) {
+    console.error(err)
+  }
+}
+
 const loadTodayTip = async () => {
   todayTipLoading.value = true
   todayTipError.value = ''
 
   try {
-    const response = await axios.get('http://localhost:8000/api/ai/test/')
+    const response = await axios.get('http://localhost:8000/api/ai/today-message/', {
+      withCredentials: true,
+    })
     if (response.data.message) {
       todayTip.value = response.data.message
     }
@@ -470,6 +510,7 @@ const refreshHome = async () => {
 onMounted(() => {
   refreshHome()
   loadTodayTip()
+  loadAiRecommendedProducts()
   window.addEventListener('auth-state-changed', refreshHome)
 })
 

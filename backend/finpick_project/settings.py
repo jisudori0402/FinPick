@@ -66,6 +66,8 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = 'static/'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 LOGIN_URL = 'login'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 KAKAO_MAP_APP_KEY = os.getenv('KAKAO_MAP_APP_KEY', '')
@@ -83,6 +85,7 @@ GMS_OPENAI_BASE_URL = (
     or ''
 )
 GMS_OPENAI_MODEL = os.getenv('GMS_OPENAI_MODEL', 'gpt-4.1-mini')
+LOGO_DEV_KEY = os.getenv("LOGO_DEV_KEY", "")
 
 CORS_ALLOW_CREDENTIALS = True
 

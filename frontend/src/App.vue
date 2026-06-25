@@ -2,9 +2,9 @@
   <div class="app">
     <header class="site-header">
       <RouterLink class="brand" to="/" aria-label="FinPick 홈">
-        <span class="brand-mark" aria-hidden="true">F</span>
-        <span>FinPick</span>
+        <img class="brand-logo" src="@/assets/finpick_logo.png" alt="FinPick" />
       </RouterLink>
+    
 
       <nav class="site-nav" aria-label="주요 메뉴">
         <RouterLink class="nav-link" to="/">홈</RouterLink>

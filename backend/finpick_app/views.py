@@ -23,6 +23,8 @@ from django.contrib.auth import authenticate, login
 from openai import APIConnectionError, AuthenticationError, OpenAI, OpenAIError
 
 def api_ai_test(request):
+    return api_daily_financial_tip(request)
+
     today = timezone.localdate()
     saved_tip = DailyFinancialTip.objects.filter(tip_date=today).first()
 
@@ -106,6 +108,7 @@ from .models import (
     RoadmapMission,
     RoadmapStep,
     RoadmapTemplate,
+    SearchKeywordTrend,
     UserMission,
     UserDepositSubscription,
     UserProfile,
@@ -114,6 +117,8 @@ from .models import (
     UserFavoriteDepositProduct,
     UserFavoriteStock,
 )
+from .ai_services import build_rag_diagnosis_insights, build_today_message, search_financial_guides, get_weak_areas
+from .product_recommendation_service import get_scored_product_recommendations
 
 
 AI_RECOMMENDATION_COUNT = 5
@@ -173,6 +178,146 @@ FINANCIAL_TYPE_RECOMMENDATION_PROMPT = """
   "stock_codes": ["005930", "000660", "035420", "051910", "035720"]
 }
 """
+
+FINANCIAL_TYPE_RECOMMENDATION_PROMPT = """
+당신은 사회초년생 전문 금융 상담사입니다.
+
+사용자의 금융 정보를 분석하여 예적금 추천 조건과 주식 추천 조건을 생성하세요.
+
+반드시 JSON 형식으로 답변하세요.
+
+조건
+- 상품명을 직접 추천하지 마세요.
+- 검색에 사용할 조건만 생성하세요.
+- 사회초년생 기준으로 추천하세요.
+
+출력 형식
+{
+  "deposit": {
+    "type": "자유적금",
+    "period": "12개월",
+    "risk": "안정",
+    "keyword": "우대금리"
+  },
+  "stock": {
+    "type": "ETF",
+    "risk": "낮음",
+    "keyword": "대형 우량주"
+  }
+}
+"""
+
+DAILY_FINANCIAL_TIP_PROMPT = """
+당신은 사회초년생 금융 멘토입니다.
+
+사용자의 금융 성향에 맞는 응원 문구 또는 금융 습관 한 줄을 작성하세요.
+
+조건
+- 40자 이하
+- 너무 딱딱하지 않게
+- 실천을 유도하는 문장
+"""
+
+DIAGNOSIS_INSIGHT_PROMPT = """
+당신은 사회초년생 전문 금융 컨설턴트입니다.
+
+사용자의 금융진단 결과를 분석하여 '강점' 3개와 '보완점' 3개를 작성하세요.
+
+[사용자 정보]
+- 금융 유형: {financial_type}
+- 나이: {age}
+- 월 소득: {income}
+- 소비 성향: {consume}
+- 금융 목표: {goal}
+- 투자 성향: {investment}
+- 자산: {asset}
+- 부채: {debt}
+
+조건
+1. 실제 입력 정보를 바탕으로 작성하세요.
+2. 강점은 사용자의 좋은 금융 습관을 구체적으로 칭찬하세요.
+3. 보완점은 부족한 점을 지적하기보다 실천 가능한 개선 방향을 제안하세요.
+4. 각 항목은 40자 이내로 작성하세요.
+5. 어려운 금융 용어는 사용하지 마세요.
+6. 같은 내용이나 표현을 반복하지 마세요.
+
+반드시 아래 JSON 형식으로만 답변하세요.
+
+{
+  "strengths": [
+    "...",
+    "...",
+    "..."
+  ],
+  "improvements": [
+    "...",
+    "...",
+    "..."
+  ]
+}
+"""
+
+
+def api_daily_financial_tip(request):
+    today = timezone.localdate()
+    saved_tip = DailyFinancialTip.objects.filter(tip_date=today).first()
+
+    if saved_tip:
+        return JsonResponse({
+            "message": saved_tip.message,
+            "date": saved_tip.tip_date.isoformat(),
+            "cached": True,
+        })
+
+    if not settings.GMS_API_KEY or not settings.GMS_OPENAI_BASE_URL:
+        return JsonResponse({
+            "message": "AI 추천 설정이 필요합니다.",
+        }, status=500)
+
+    client = OpenAI(
+        api_key=settings.GMS_API_KEY,
+        base_url=settings.GMS_OPENAI_BASE_URL,
+    )
+
+    try:
+        response = client.chat.completions.create(
+            model=settings.GMS_OPENAI_MODEL,
+            messages=[
+                {"role": "system", "content": DAILY_FINANCIAL_TIP_PROMPT},
+                {"role": "user", "content": build_ai_user_context_text(request.user)},
+            ],
+            temperature=0.8,
+        )
+    except AuthenticationError:
+        return JsonResponse({
+            "message": "AI API 키를 확인해 주세요.",
+        }, status=502)
+    except APIConnectionError:
+        return JsonResponse({
+            "message": "AI 서버에 연결하지 못했습니다.",
+        }, status=502)
+    except OpenAIError:
+        return JsonResponse({
+            "message": "AI 추천 생성에 실패했습니다.",
+        }, status=502)
+
+    output_text = (response.choices[0].message.content or '').strip().strip('"')
+
+    if not output_text:
+        return JsonResponse({
+            "message": "AI 응답에서 문구를 찾지 못했습니다.",
+        }, status=502)
+
+    DailyFinancialTip.objects.update_or_create(
+        tip_date=today,
+        defaults={"message": output_text[:40]},
+    )
+
+    return JsonResponse({
+        "message": output_text[:40],
+        "date": today.isoformat(),
+        "cached": False,
+    })
 
 
 XLSX_NS = {'a': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
@@ -421,6 +566,109 @@ def decide_financial_type(financial_goal, spending_style, investment_style, asse
     return '🐢 안정형 저축러'
 
 
+def get_profile_for_ai(user):
+    if user and user.is_authenticated:
+        return getattr(user, 'profile', None)
+    return None
+
+
+def format_ai_value(value, fallback='미입력'):
+    if value in [None, '']:
+        return fallback
+    return str(value)
+
+
+def build_ai_user_context(user, financial_type=None, diagnosis=None):
+    profile = get_profile_for_ai(user)
+    latest = diagnosis
+    if latest is None and user and user.is_authenticated:
+        latest = DiagnosisResult.objects.filter(user=user).order_by('-created_at').first()
+
+    return {
+        "나이": format_ai_value(getattr(profile, 'age', None)),
+        "월소득": format_ai_value(getattr(profile, 'monthly_income', None), getattr(latest, 'income_level', '미입력') if latest else '미입력'),
+        "금융유형": format_ai_value(financial_type or getattr(latest, 'financial_type', None)),
+        "소비성향": format_ai_value(getattr(latest, 'spending_style', None)),
+        "목표": format_ai_value(getattr(latest, 'financial_goal', None)),
+        "투자성향": format_ai_value(getattr(latest, 'investment_style', None)),
+        "자산": format_ai_value(getattr(latest, 'asset_level', None)),
+        "부채": format_ai_value(getattr(latest, 'loan_type', None)),
+    }
+
+
+def build_ai_user_context_text(user, financial_type=None, diagnosis=None):
+    context = build_ai_user_context(user, financial_type, diagnosis)
+    return "\n".join(f"{key}: {value}" for key, value in context.items())
+
+
+def sanitize_ai_text_list(items, fallback_items, limit=3, max_length=40):
+    values = []
+    if isinstance(items, list):
+        for item in items:
+            text = " ".join(str(item).strip().split())
+            if text and text not in values:
+                values.append(text[:max_length])
+            if len(values) >= limit:
+                break
+
+    for item in fallback_items:
+        text = " ".join(str(item).strip().split())
+        if text and text not in values:
+            values.append(text[:max_length])
+        if len(values) >= limit:
+            break
+
+    return values[:limit]
+
+
+def build_ai_diagnosis_insights(
+    user,
+    financial_type,
+    income_level,
+    spending_style,
+    financial_goal,
+    investment_style,
+    asset_level,
+    loan_type,
+    fallback_strengths,
+    fallback_improvements,
+):
+    if not settings.GMS_API_KEY or not settings.GMS_OPENAI_BASE_URL:
+        return fallback_strengths, fallback_improvements
+
+    profile = get_profile_for_ai(user)
+    replacements = {
+        "{financial_type}": format_ai_value(financial_type),
+        "{age}": format_ai_value(getattr(profile, 'age', None)),
+        "{income}": format_ai_value(getattr(profile, 'monthly_income', None), income_level),
+        "{consume}": format_ai_value(spending_style),
+        "{goal}": format_ai_value(financial_goal),
+        "{investment}": format_ai_value(investment_style),
+        "{asset}": format_ai_value(asset_level),
+        "{debt}": format_ai_value(loan_type),
+    }
+    prompt = DIAGNOSIS_INSIGHT_PROMPT
+    for placeholder, value in replacements.items():
+        prompt = prompt.replace(placeholder, value)
+
+    client = OpenAI(
+        api_key=settings.GMS_API_KEY,
+        base_url=settings.GMS_OPENAI_BASE_URL,
+    )
+    response = client.chat.completions.create(
+        model=settings.GMS_OPENAI_MODEL,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.4,
+        response_format={"type": "json_object"},
+    )
+    content = response.choices[0].message.content or "{}"
+    result = json.loads(content)
+
+    strengths = sanitize_ai_text_list(result.get("strengths"), fallback_strengths)
+    improvements = sanitize_ai_text_list(result.get("improvements"), fallback_improvements)
+    return strengths, improvements
+
+
 def build_strengths(scores):
     strengths = []
     if scores['spending'] >= 15:
@@ -570,6 +818,10 @@ def get_user_roadmap(user):
     }
 
 
+def reset_user_roadmap_progress(user):
+    UserMission.objects.filter(user=user).delete()
+
+
 @csrf_exempt
 @login_required
 def api_diagnosis(request):
@@ -604,8 +856,10 @@ def api_diagnosis(request):
             loan_type,
             readiness_score,
         )
-        strengths = build_strengths(scores)
-        improvements = build_improvements(scores)
+        fallback_strengths = build_strengths(scores)
+        fallback_improvements = build_improvements(scores)
+        strengths = fallback_strengths
+        improvements = fallback_improvements
         type_content = TYPE_CONTENT[financial_type]
         profile_scores = {
             '저축 습관': score_to_stars(max(scores['spending'], scores['asset'])),
@@ -636,10 +890,19 @@ def api_diagnosis(request):
             level=financial_type,
             summary=type_content['intro'],
         )
+        rag_result = build_rag_diagnosis_insights(result, fallback_strengths, fallback_improvements)
+        result.strengths = '\n'.join(rag_result['strengths'])
+        result.improvements = '\n'.join(rag_result['weaknesses'])
+        result.save(update_fields=['strengths', 'improvements'])
+        reset_user_roadmap_progress(request.user)
 
         return JsonResponse({
             'message': '吏꾨떒???꾨즺?섏뿀?듬땲??',
-            'result': diagnosis_to_payload(result),
+            'result': {
+                **diagnosis_to_payload(result),
+                'reference_guides': rag_result['guides'],
+                'is_rag_based': True,
+            },
         }, status=201)
     return JsonResponse({'message': 'POST 요청만 지원합니다.'}, status=405)
 
@@ -651,10 +914,56 @@ def api_latest_diagnosis(request):
         .order_by('-created_at')
         .first()
     )
+    payload = diagnosis_to_payload(latest_diagnosis) if latest_diagnosis else None
+    if latest_diagnosis and payload:
+        weak_areas = get_weak_areas(latest_diagnosis)
+        payload['reference_guides'] = search_financial_guides(weak_areas, limit=3)
+        payload['is_rag_based'] = True
 
     return JsonResponse({
-        'result': diagnosis_to_payload(latest_diagnosis) if latest_diagnosis else None,
+        'result': payload,
     })
+
+
+def api_ai_diagnosis_summary(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'message': '로그인이 필요합니다.'}, status=401)
+
+    latest_diagnosis = DiagnosisResult.objects.filter(user=request.user).order_by('-created_at').first()
+    if latest_diagnosis is None:
+        return JsonResponse({
+            'message': '금융진단 결과가 없습니다. 먼저 금융진단을 완료해 주세요.',
+            'result': None,
+        })
+
+    weak_areas = get_weak_areas(latest_diagnosis)
+    guides = search_financial_guides(weak_areas, limit=3)
+    return JsonResponse({
+        'result': {
+            **diagnosis_to_payload(latest_diagnosis),
+            'reference_guides': guides,
+            'is_rag_based': True,
+        }
+    })
+
+
+def api_ai_today_message(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'message': '로그인이 필요합니다.'}, status=401)
+
+    result = build_today_message(request.user)
+    return JsonResponse({
+        'message': result['message'],
+        'reference_guides': result['guides'],
+        'has_diagnosis': result['has_diagnosis'],
+    })
+
+
+def api_ai_recommend_products(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'message': '로그인이 필요합니다.'}, status=401)
+
+    return JsonResponse(get_scored_product_recommendations(request.user))
 
 
 @login_required
@@ -709,6 +1018,56 @@ def api_products(request):
     return JsonResponse({'products': products})
 
 
+DEFAULT_TRENDING_KEYWORDS = [
+    '금융 투자',
+    '재테크 기초',
+    '주식 투자',
+    'ETF',
+    '절세 전략',
+]
+
+
+def normalize_search_keyword(keyword):
+    return ' '.join((keyword or '').strip().split())[:100]
+
+
+def record_search_keyword(keyword):
+    normalized = normalize_search_keyword(keyword)
+    if not normalized:
+        return
+
+    trend, _ = SearchKeywordTrend.objects.get_or_create(keyword=normalized)
+    trend.search_count = trend.search_count + 1
+    trend.save(update_fields=['search_count', 'last_searched_at'])
+
+
+@login_required
+def api_trending_keywords(request):
+    trends = list(SearchKeywordTrend.objects.order_by('-search_count', '-last_searched_at')[:10])
+    keywords = [
+        {
+            'rank': index + 1,
+            'keyword': trend.keyword,
+            'count': trend.search_count,
+            'last_searched_at': timezone.localtime(trend.last_searched_at).strftime('%H:%M'),
+        }
+        for index, trend in enumerate(trends)
+    ]
+
+    if not keywords:
+        keywords = [
+            {
+                'rank': index + 1,
+                'keyword': keyword,
+                'count': 0,
+                'last_searched_at': '',
+            }
+            for index, keyword in enumerate(DEFAULT_TRENDING_KEYWORDS)
+        ]
+
+    return JsonResponse({'keywords': keywords})
+
+
 def serialize_youtube_search_item(item):
     snippet = item.get('snippet', {})
     thumbnails = snippet.get('thumbnails', {})
@@ -755,6 +1114,7 @@ def api_youtube_search(request):
     query = request.GET.get('q', '').strip()
     if not query:
         return JsonResponse({'videos': []})
+    record_search_keyword(query)
     if not settings.YOUTUBE_DATA_API_KEY:
         return JsonResponse({'message': '.env에 YOUTUBE_DATA_API_KEY를 설정해 주세요.'}, status=500)
 
@@ -1103,27 +1463,52 @@ def calculate_age(birth_date):
     return today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
 
 
+def get_profile_image_url(request, profile):
+    if not profile.profile_image:
+        return ''
+
+    return request.build_absolute_uri(profile.profile_image.url)
+
+
 @csrf_exempt
 @login_required
 def api_profile(request):
     profile, _ = UserProfile.objects.get_or_create(user=request.user)
 
     if request.method == 'POST':
-        try:
-            body = json.loads(request.body.decode('utf-8') or '{}')
-        except json.JSONDecodeError:
+        if request.content_type and request.content_type.startswith('multipart/form-data'):
             body = request.POST
+        else:
+            try:
+                body = json.loads(request.body.decode('utf-8') or '{}')
+            except json.JSONDecodeError:
+                body = request.POST
 
         name = (body.get('name') or '').strip()
+        username = (body.get('username') or request.user.username or '').strip()
+        email = (body.get('email') or request.user.email or '').strip()
         birth_date_value = request.POST.get('birth_date', '').strip()
         if hasattr(body, 'get'):
             birth_date_value = (body.get('birth_date') or birth_date_value or '').strip()
         job = (body.get('job') or '').strip()
         residence_type = (body.get('residence_type') or body.get('region') or '').strip()
         intro = (body.get('intro') or '').strip()
+        profile_image = request.FILES.get('profile_image')
 
         if not name:
             return JsonResponse({'message': '이름을 입력해 주세요.'}, status=400)
+
+        if not username:
+            return JsonResponse({'message': '아이디를 입력해 주세요.'}, status=400)
+
+        if User.objects.exclude(id=request.user.id).filter(username=username).exists():
+            return JsonResponse({'message': '이미 사용 중인 아이디입니다.'}, status=400)
+
+        if email and User.objects.exclude(id=request.user.id).filter(email=email).exists():
+            return JsonResponse({'message': '이미 사용 중인 이메일입니다.'}, status=400)
+
+        if profile_image and not profile_image.content_type.startswith('image/'):
+            return JsonResponse({'message': '이미지 파일만 업로드할 수 있습니다.'}, status=400)
 
         birth_date = None
         age = None
@@ -1135,13 +1520,19 @@ def api_profile(request):
             age = calculate_age(birth_date)
 
         request.user.first_name = name
-        request.user.save(update_fields=['first_name'])
+        request.user.username = username
+        request.user.email = email
+        request.user.save(update_fields=['first_name', 'username', 'email'])
         profile.birth_date = birth_date
         profile.age = age
         profile.job = job
         profile.residence_type = residence_type
         profile.intro = intro
-        profile.save(update_fields=['birth_date', 'age', 'job', 'residence_type', 'intro'])
+        update_fields = ['birth_date', 'age', 'job', 'residence_type', 'intro']
+        if profile_image:
+            profile.profile_image = profile_image
+            update_fields.append('profile_image')
+        profile.save(update_fields=update_fields)
 
     subscriptions = (
         UserDepositSubscription.objects
@@ -1153,12 +1544,14 @@ def api_profile(request):
     return JsonResponse({
         'profile': {
             'name': request.user.first_name or request.user.get_full_name() or request.user.username,
+            'username': request.user.username,
             'email': request.user.email,
             'birth_date': profile.birth_date.isoformat() if profile.birth_date else '',
             'age': profile.age,
             'job': profile.job,
             'residence_type': profile.residence_type,
             'intro': profile.intro,
+            'profile_image_url': get_profile_image_url(request, profile),
             'joined_at': timezone.localtime(request.user.date_joined).strftime('%Y-%m-%d'),
         },
         'subscriptions': subscription_list,
@@ -1252,7 +1645,7 @@ def get_stock_recommendation_candidates(limit=40):
     return stocks[:limit] or FALLBACK_STOCKS[:limit]
 
 
-def build_ai_product_recommendation(finanical_type, deposit_candidates, stock_candidates):
+def build_ai_product_recommendation(finanical_type, deposit_candidates, stock_candidates, user=None):
     if not settings.GMS_API_KEY or not settings.GMS_OPENAI_BASE_URL:
         raise OpenAIError("GMS OpenAI settings are missing.")
 
@@ -1261,43 +1654,13 @@ def build_ai_product_recommendation(finanical_type, deposit_candidates, stock_ca
         base_url=settings.GMS_OPENAI_BASE_URL,
     )
 
-    candidate_payload = {
-        "financial_type": finanical_type,
-        "deposit_candidates": [
-            {
-                "id": item["id"],
-                "product_type": item["product_type_display"],
-                "company": item["financial_company_name"],
-                "name": item["product_name"],
-                "best_term": item["best_term"],
-                "interest_rate": item["interest_rate"],
-                "max_interest_rate": item["max_interest_rate"],
-                "max_limit": item["max_limit"],
-            }
-            for item in deposit_candidates
-        ],
-        "stock_candidates": [
-            {
-                "code": item["code"],
-                "name": item["name"],
-                "market": item["market"],
-                "base_date": item["base_date"],
-                "current_price": item["current_price"],
-                "change_rate": item["change_rate"],
-                "volume": item["volume"],
-                "market_cap": item["market_cap"],
-            }
-            for item in stock_candidates
-        ],
-    }
-
     response = client.chat.completions.create(
         model=settings.GMS_OPENAI_MODEL,
         messages=[
             {"role": "system", "content": FINANCIAL_TYPE_RECOMMENDATION_PROMPT},
             {
                 "role": "user",
-                "content": json.dumps(candidate_payload, ensure_ascii=False),
+                "content": build_ai_user_context_text(user, finanical_type),
             },
         ],
         temperature=0.2,
@@ -1308,9 +1671,92 @@ def build_ai_product_recommendation(finanical_type, deposit_candidates, stock_ca
     return json.loads(content)
 
 
+def number_or_zero(value):
+    try:
+        return float(value or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def condition_value(condition, key):
+    if not isinstance(condition, dict):
+        return ''
+    return str(condition.get(key) or '').strip().lower()
+
+
+def score_deposit_by_condition(item, condition):
+    searchable = ' '.join(
+        str(item.get(key) or '')
+        for key in ['product_type_display', 'financial_company_name', 'product_name', 'join_way', 'max_limit']
+    ).lower()
+    score = 0
+
+    for key, weight in [('type', 3), ('keyword', 2), ('risk', 1)]:
+        value = condition_value(condition, key)
+        if value and value in searchable:
+            score += weight
+
+    period = condition_value(condition, 'period')
+    best_term = str(item.get('best_term') or '')
+    if period and best_term and best_term in period:
+        score += 3
+
+    return score
+
+
+def score_stock_by_condition(item, condition):
+    searchable = ' '.join(
+        str(item.get(key) or '')
+        for key in ['name', 'market']
+    ).lower()
+    score = 0
+
+    for key, weight in [('type', 2), ('keyword', 3)]:
+        value = condition_value(condition, key)
+        if value and value in searchable:
+            score += weight
+
+    risk = condition_value(condition, 'risk')
+    if risk in ['낮음', '안정', '안정적']:
+        score += 1 if item.get('market') == 'KOSPI' else 0
+        score += 1 if abs(number_or_zero(item.get('change_rate'))) <= 3 else 0
+
+    return score
+
+
+def select_deposits_by_condition(deposit_candidates, condition):
+    ranked = sorted(
+        deposit_candidates,
+        key=lambda item: (
+            score_deposit_by_condition(item, condition),
+            number_or_zero(item.get('max_interest_rate') or item.get('interest_rate')),
+        ),
+        reverse=True,
+    )
+    return [item['id'] for item in ranked[:AI_RECOMMENDATION_COUNT]]
+
+
+def select_stocks_by_condition(stock_candidates, condition):
+    ranked = sorted(
+        stock_candidates,
+        key=lambda item: (
+            score_stock_by_condition(item, condition),
+            number_or_zero(item.get('market_cap')),
+            -abs(number_or_zero(item.get('change_rate'))),
+        ),
+        reverse=True,
+    )
+    return [item['code'] for item in ranked[:AI_RECOMMENDATION_COUNT]]
+
+
 def normalize_ai_recommendations(ai_result, deposit_candidates, stock_candidates):
     deposit_candidate_ids = [item["id"] for item in deposit_candidates]
     stock_candidate_codes = [item["code"] for item in stock_candidates]
+
+    if isinstance(ai_result.get("deposit"), dict) or isinstance(ai_result.get("stock"), dict):
+        deposit_ids = select_deposits_by_condition(deposit_candidates, ai_result.get("deposit", {}))
+        stock_codes = select_stocks_by_condition(stock_candidates, ai_result.get("stock", {}))
+        return deposit_ids[:AI_RECOMMENDATION_COUNT], stock_codes[:AI_RECOMMENDATION_COUNT]
 
     deposit_ids = []
     for product_id in ai_result.get("deposit_product_ids", []):
@@ -1359,6 +1805,10 @@ def hydrate_recommended_products(deposit_ids, stock_codes, stock_candidates, use
 
 
 def api_ai_product_recommendations(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'message': '로그인이 필요합니다.'}, status=401)
+    return JsonResponse(get_scored_product_recommendations(request.user))
+
     today = timezone.localdate()
     financial_type = get_latest_financial_type(request.user)
     deposit_candidates = get_deposit_recommendation_candidates()
@@ -1392,6 +1842,7 @@ def api_ai_product_recommendations(request):
             financial_type,
             deposit_candidates,
             stock_candidates,
+            request.user,
         )
         is_ai_recommended = True
     except (OpenAIError, json.JSONDecodeError, TypeError, ValueError):
@@ -1480,6 +1931,7 @@ def parse_stock_number(value, default=0):
 
 
 def serialize_stock_item(item):
+    code = item.get('srtnCd') or item.get('isinCd') or ''
     current_price = parse_stock_number(item.get('clpr'))
     change = parse_stock_number(item.get('vs'))
     change_rate = parse_stock_number(item.get('fltRt'))
@@ -1487,10 +1939,11 @@ def serialize_stock_item(item):
     market_cap = parse_stock_number(item.get('mrktTotAmt'))
 
     return {
-        'code': item.get('srtnCd') or item.get('isinCd') or '',
+        'code': code,
         'isin_code': item.get('isinCd') or '',
         'name': item.get('itmsNm') or '',
         'market': item.get('mrktCtg') or '',
+        'logo_url': get_stock_logo_url(code),
         'base_date': item.get('basDt') or '',
         'current_price': int(current_price),
         'change': int(change),
@@ -1554,6 +2007,7 @@ def mark_stock_favorites(stocks, user):
         return [
             {
                 **stock,
+                "logo_url": stock.get("logo_url") or get_stock_logo_url(stock.get("code")),
                 "is_favorite": False,
             }
             for stock in stocks
@@ -1569,6 +2023,7 @@ def mark_stock_favorites(stocks, user):
     return [
         {
             **stock,
+            "logo_url": stock.get("logo_url") or get_stock_logo_url(stock.get("code")),
             "is_favorite": stock.get("code") in favorite_codes,
         }
         for stock in stocks
@@ -1581,6 +2036,7 @@ def serialize_favorite_stock(favorite):
         "isin_code": favorite.isin_code,
         "name": favorite.name,
         "market": favorite.market,
+        "logo_url": get_stock_logo_url(favorite.code),
         "base_date": favorite.base_date,
         "current_price": favorite.current_price,
         "change": favorite.change,
@@ -2191,6 +2647,54 @@ def password_change_api(request):
 
 
 @csrf_exempt
+def password_reset_api(request):
+    if request.method != "POST":
+        return JsonResponse({
+            "message": "POST 요청만 허용됩니다."
+        }, status=405)
+
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({
+            "message": "잘못된 요청 형식입니다."
+        }, status=400)
+
+    username = (body.get("username") or "").strip()
+    name = (body.get("name") or "").strip()
+    new_password = body.get("new_password", "")
+    new_password_confirm = body.get("new_password_confirm", "")
+
+    if not username or not name or not new_password or not new_password_confirm:
+        return JsonResponse({
+            "message": "모든 항목을 입력해주세요."
+        }, status=400)
+
+    if new_password != new_password_confirm:
+        return JsonResponse({
+            "message": "새 비밀번호가 일치하지 않습니다."
+        }, status=400)
+
+    user = User.objects.filter(username=username).first()
+    if user is None or (user.first_name or "").strip() != name:
+        return JsonResponse({
+            "message": "아이디와 이름이 일치하는 계정을 찾지 못했습니다."
+        }, status=400)
+
+    user.set_password(new_password)
+    user.save(update_fields=["password"])
+
+    profile, _ = UserProfile.objects.get_or_create(user=user)
+    profile.password_changed_at = timezone.now()
+    profile.save(update_fields=["password_changed_at"])
+
+    return JsonResponse({
+        "message": "비밀번호가 재설정되었습니다. 새 비밀번호로 로그인해 주세요.",
+        "password_changed_at": timezone.localtime(profile.password_changed_at).strftime("%Y-%m-%d"),
+    })
+
+
+@csrf_exempt
 def logout_api(request):
     if request.method != "POST":
         return JsonResponse({
@@ -2233,6 +2737,7 @@ def dashboard_api(request):
             "saving_status": profile.saving_status,
             "invest_experience": profile.invest_experience,
             "intro": profile.intro,
+            "profile_image_url": get_profile_image_url(request, profile),
             "birth_date": profile.birth_date.isoformat() if profile.birth_date else "",
             "created_at": profile.created_at.strftime("%Y-%m-%d") if profile.created_at else "",
             "password_changed_at": timezone.localtime(profile.password_changed_at).strftime("%Y-%m-%d") if profile.password_changed_at else "",
@@ -2323,3 +2828,57 @@ def deduplicate_latest_stocks(stocks):
                 latest_by_code[code] = stock
 
     return list(latest_by_code.values())
+
+
+STOCK_LOGO_DOMAINS = {
+    "005930": "samsung.com",          # 삼성전자
+    "005935": "samsung.com",          # 삼성전자우
+    "000660": "skhynix.com",          # SK하이닉스
+    "402340": "sksquare.com",         # SK스퀘어
+    "035420": "navercorp.com",        # NAVER
+    "035720": "kakaocorp.com",        # 카카오
+    "005380": "hyundai.com",          # 현대차
+    "000270": "kia.com",              # 기아
+    "051910": "lgchem.com",           # LG화학
+    "006400": "samsungsdi.com",       # 삼성SDI
+    "009150": "samsungsem.com",       # 삼성전기
+    "005490": "posco-inc.com",        # POSCO홀딩스
+    "034020": "doosanenerbility.com", # 두산에너빌리티
+    "012330": "mobis.co.kr",          # 현대모비스
+    "055550": "shinhan.com",          # 신한지주
+    "105560": "kbfg.com",             # KB금융
+    "086790": "hanafn.com",           # 하나금융지주
+    "316140": "woorifg.com",          # 우리금융지주
+    "032830": "samsunglife.com",      # 삼성생명
+    "028260": "samsungcnt.com",       # 삼성물산
+    "068270": "celltrion.com",        # 셀트리온
+    "373220": "lgesolution.com",      # LG에너지솔루션
+    "207940": "samsungbiologics.com", # 삼성바이오로직스
+    "329180": "hd-hyundaiheavyindustries.com", # HD현대중공업
+    "005387": "hyundai.com",          # 현대차2우B
+    "006800": "miraeassetsecurities.com", # 미래에셋증권
+    "096770": "skinnovation.com",     # SK이노베이션
+    "066570": "lg.com",               # LG전자
+    "003550": "lg.co.kr",             # LG
+    "017670": "sktelecom.com",        # SK텔레콤
+    "030200": "kt.com",               # KT
+    "033780": "ktng.com",             # KT&G
+    "010950": "s-oil.com",            # S-Oil
+    "010130": "koreazinc.co.kr",      # 고려아연
+    "011200": "hmm21.com",            # HMM
+    "018260": "sds.samsung.com",      # 삼성SDS
+}
+
+
+def get_stock_logo_url(stock_code):
+    domain = STOCK_LOGO_DOMAINS.get(stock_code)
+
+    if not domain:
+        return None
+
+    logo_key = getattr(settings, "LOGO_DEV_KEY", "")
+
+    if not logo_key:
+        return None
+
+    return f"https://img.logo.dev/{domain}?token={logo_key}&format=png&size=128"
