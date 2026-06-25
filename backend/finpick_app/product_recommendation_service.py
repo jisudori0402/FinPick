@@ -1,7 +1,6 @@
 import json
 
 from django.conf import settings
-from openai import OpenAI, OpenAIError
 
 from .ai_services import (
     build_today_message,
@@ -11,6 +10,38 @@ from .ai_services import (
     search_financial_guides,
 )
 from .models import DepositProduct, DiagnosisResult
+
+
+class OpenAIUnavailableError(Exception):
+    pass
+
+
+OpenAIError = OpenAIUnavailableError
+
+
+class _UnavailableOpenAICompletions:
+    def create(self, *args, **kwargs):
+        raise OpenAIUnavailableError("openai package is not installed.")
+
+
+class _UnavailableOpenAIChat:
+    completions = _UnavailableOpenAICompletions()
+
+
+class _UnavailableOpenAIClient:
+    chat = _UnavailableOpenAIChat()
+
+
+def get_openai_client():
+    global OpenAIError
+
+    try:
+        from openai import OpenAI as ImportedOpenAI, OpenAIError as ImportedOpenAIError
+    except ImportError:
+        return _UnavailableOpenAIClient()
+
+    OpenAIError = ImportedOpenAIError
+    return ImportedOpenAI(api_key=settings.GMS_API_KEY, base_url=settings.GMS_OPENAI_BASE_URL)
 
 
 def number(value, default=0):
@@ -143,7 +174,7 @@ def build_ai_recommendation_reasons(user, products, diagnosis):
         return fallback
 
     try:
-        client = OpenAI(api_key=settings.GMS_API_KEY, base_url=settings.GMS_OPENAI_BASE_URL)
+        client = get_openai_client()
         response = client.chat.completions.create(
             model=settings.GMS_OPENAI_MODEL,
             messages=[

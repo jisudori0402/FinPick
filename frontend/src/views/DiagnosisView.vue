@@ -8,6 +8,7 @@
       </p>
 
       <div class="diagnosis-illustration" aria-hidden="true">
+        <img src="/diagnosis-character.png" alt="" />
         <div class="clipboard">
           <div class="clip"></div>
           <span></span>

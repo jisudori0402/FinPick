@@ -2,6 +2,12 @@
   <SidebarLayout class="my-page" surface="soft">
     <template #sidebar>
       <AppSidebar>
+        <template #top>
+      <div class="my-sidebar-mascot" aria-hidden="true">
+        <img src="/my-sidebar-character.png" alt="" />
+      </div>
+        </template>
+
         <template #nav>
       <nav class="my-side-nav" aria-label="내 정보 메뉴">
         <button class="active" type="button">

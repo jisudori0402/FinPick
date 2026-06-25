@@ -20,7 +20,50 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 import requests
 from django.contrib.auth import authenticate, login
-from openai import APIConnectionError, AuthenticationError, OpenAI, OpenAIError
+
+
+class OpenAIUnavailableError(Exception):
+    pass
+
+
+OpenAIError = OpenAIUnavailableError
+AuthenticationError = OpenAIUnavailableError
+APIConnectionError = OpenAIUnavailableError
+
+
+class _UnavailableOpenAICompletions:
+    def create(self, *args, **kwargs):
+        raise OpenAIUnavailableError("openai package is not installed.")
+
+
+class _UnavailableOpenAIChat:
+    completions = _UnavailableOpenAICompletions()
+
+
+class _UnavailableOpenAIClient:
+    chat = _UnavailableOpenAIChat()
+
+
+def get_openai_client():
+    global OpenAIError, AuthenticationError, APIConnectionError
+
+    try:
+        from openai import (
+            APIConnectionError as ImportedAPIConnectionError,
+            AuthenticationError as ImportedAuthenticationError,
+            OpenAI as ImportedOpenAI,
+            OpenAIError as ImportedOpenAIError,
+        )
+    except ImportError:
+        return _UnavailableOpenAIClient()
+
+    OpenAIError = ImportedOpenAIError
+    AuthenticationError = ImportedAuthenticationError
+    APIConnectionError = ImportedAPIConnectionError
+    return ImportedOpenAI(
+        api_key=settings.GMS_API_KEY,
+        base_url=settings.GMS_OPENAI_BASE_URL,
+    )
 
 def api_ai_test(request):
     return api_daily_financial_tip(request)
@@ -45,10 +88,7 @@ def api_ai_test(request):
             "message": "GMS를 통해 OpenAI를 호출하려면 GMS_OPENAI_BASE_URL이 필요합니다."
         }, status=500)
 
-    client = OpenAI(
-        api_key=settings.GMS_API_KEY,
-        base_url=settings.GMS_OPENAI_BASE_URL,
-    )
+    client = get_openai_client()
 
     try:
         response = client.chat.completions.create(
@@ -274,10 +314,7 @@ def api_daily_financial_tip(request):
             "message": "AI 추천 설정이 필요합니다.",
         }, status=500)
 
-    client = OpenAI(
-        api_key=settings.GMS_API_KEY,
-        base_url=settings.GMS_OPENAI_BASE_URL,
-    )
+    client = get_openai_client()
 
     try:
         response = client.chat.completions.create(
@@ -651,10 +688,7 @@ def build_ai_diagnosis_insights(
     for placeholder, value in replacements.items():
         prompt = prompt.replace(placeholder, value)
 
-    client = OpenAI(
-        api_key=settings.GMS_API_KEY,
-        base_url=settings.GMS_OPENAI_BASE_URL,
-    )
+    client = get_openai_client()
     response = client.chat.completions.create(
         model=settings.GMS_OPENAI_MODEL,
         messages=[{"role": "user", "content": prompt}],
@@ -1649,10 +1683,7 @@ def build_ai_product_recommendation(finanical_type, deposit_candidates, stock_ca
     if not settings.GMS_API_KEY or not settings.GMS_OPENAI_BASE_URL:
         raise OpenAIError("GMS OpenAI settings are missing.")
 
-    client = OpenAI(
-        api_key=settings.GMS_API_KEY,
-        base_url=settings.GMS_OPENAI_BASE_URL,
-    )
+    client = get_openai_client()
 
     response = client.chat.completions.create(
         model=settings.GMS_OPENAI_MODEL,
