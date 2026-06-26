@@ -1,15 +1,15 @@
-<template>
+﻿<template>
   <section class="roadmap-page">
     <div class="roadmap-title-row">
       <div>
-        <h1>금융 성장 로드맵</h1>
+        <h1>湲덉쑖 ?깆옣 濡쒕뱶留?</h1>
         <p class="roadmap-type">{{ roadmap?.type_code || '로드맵 준비 중' }}</p>
       </div>
 
       <div v-if="roadmap" class="roadmap-progress-summary">
-        <span>진행률</span>
-        <strong>{{ roadmap.progress }}%</strong>
-        <small>{{ roadmap.completed_count }} / {{ roadmap.total_count }} 미션 완료</small>
+        <span>吏꾪뻾瑜?</span>
+        <strong>오늘의 금융 테마</strong>
+        <small>{{ roadmap.completed_count }} / {{ roadmap.total_count }} 誘몄뀡 ?꾨즺</small>
         <div class="roadmap-progress-track">
           <span :style="{ width: roadmap.progress + '%' }"></span>
         </div>
@@ -17,7 +17,7 @@
     </div>
 
     <div v-if="loading" class="status-box roadmap-status">
-      로드맵을 불러오는 중입니다.
+      濡쒕뱶留듭쓣 遺덈윭?ㅻ뒗 以묒엯?덈떎.
     </div>
 
     <div v-else-if="error" class="status-box error roadmap-status">
@@ -25,18 +25,18 @@
     </div>
 
     <div v-else-if="!roadmap" class="roadmap-empty">
-      <h2>아직 로드맵이 없습니다</h2>
-      <p>금융 진단을 먼저 완료하면 나에게 맞는 성장 미션을 만들 수 있어요.</p>
+      <h2>?꾩쭅 濡쒕뱶留듭씠 ?놁뒿?덈떎</h2>
+      <p>湲덉쑖 吏꾨떒??癒쇱? ?꾨즺?섎㈃ ?섏뿉寃?留욌뒗 ?깆옣 誘몄뀡??留뚮뱾 ???덉뼱??</p>
       <RouterLink class="primary-btn single-btn" to="/diagnosis">
-        금융 진단 먼저 하기
+        湲덉쑖 吏꾨떒 癒쇱? ?섍린
       </RouterLink>
     </div>
 
     <template v-else>
       <div class="roadmap-next-card">
-        <div class="target-icon" aria-hidden="true">🎯</div>
+        <div class="target-icon" aria-hidden="true">?렞</div>
         <div>
-          <span>다음 추천 활동</span>
+          <span>?ㅼ쓬 異붿쿇 ?쒕룞</span>
           <h2>{{ nextMissionTitle }}</h2>
           <p>{{ nextMissionDescription }}</p>
         </div>
@@ -56,7 +56,7 @@
         >
           <div class="level-head">
             <div class="level-title-group">
-              <span class="level-caret">{{ level.is_locked ? '›' : '⌄' }}</span>
+              <span class="level-caret">{{ level.is_locked ? '+' : '-' }}</span>
               <div>
                 <h2>{{ level.title }}</h2>
                 <p>{{ level.description }}</p>
@@ -90,13 +90,13 @@
           </div>
 
           <p v-if="level.is_locked" class="lock-note">
-            이전 레벨의 미션을 모두 완료하면 열립니다.
+            ?댁쟾 ?덈꺼??誘몄뀡??紐⑤몢 ?꾨즺?섎㈃ ?대┰?덈떎.
           </p>
         </article>
       </div>
 
       <div class="roadmap-comment-card">
-        <span class="comment-bubble" aria-hidden="true">💬</span>
+        <span class="comment-bubble" aria-hidden="true">?뮠</span>
         <div>
           <h2>FinPick 코멘트</h2>
           <p>{{ roadmap.comment }}</p>
@@ -105,12 +105,12 @@
 
       <div class="result-actions roadmap-actions">
         <RouterLink class="primary-btn" to="/deposit-products">
-          추천 상품 보기
-          <span aria-hidden="true">→</span>
+          異붿쿇 ?곹뭹 蹂닿린
+          <span aria-hidden="true">??</span>
         </RouterLink>
 
         <RouterLink class="secondary-btn" to="/diagnosis-result">
-          진단 결과 다시 보기
+          吏꾨떒 寃곌낵 ?ㅼ떆 蹂닿린
         </RouterLink>
       </div>
     </template>
@@ -121,6 +121,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import axios from 'axios'
+import { API_BASE_URL } from '../services/api'
 
 const roadmap = ref(null)
 const loading = ref(true)
@@ -154,8 +155,8 @@ const nextMissionDescription = computed(() => {
   }
 
   return nextMission.value
-    ? '이번 미션을 완료하고 다음 성장 단계로 넘어가보세요.'
-    : '완료한 내용을 점검하고 다음 로드맵을 준비해보세요.'
+    ? '?대쾲 誘몄뀡???꾨즺?섍퀬 ?ㅼ쓬 ?깆옣 ?④퀎濡??섏뼱媛蹂댁꽭??'
+    : '?꾨즺???댁슜???먭??섍퀬 ?ㅼ쓬 濡쒕뱶留듭쓣 以鍮꾪빐蹂댁꽭??'
 })
 
 const loadRoadmap = async () => {
@@ -163,14 +164,14 @@ const loadRoadmap = async () => {
   error.value = ''
 
   try {
-    const response = await axios.get('http://localhost:8000/api/roadmap/', {
+    const response = await axios.get(`${API_BASE_URL}/api/roadmap/`, {
       withCredentials: true,
     })
 
     roadmap.value = response.data.roadmap
     syncRoadmapCache()
   } catch (err) {
-    error.value = err.response?.data?.message || '로드맵을 불러오지 못했습니다.'
+    error.value = err.response?.data?.message || '濡쒕뱶留듭쓣 遺덈윭?ㅼ? 紐삵뻽?듬땲??'
     console.error(err)
   } finally {
     loading.value = false
@@ -183,7 +184,7 @@ const toggleMission = async (missionId) => {
 
   try {
     const response = await axios.post(
-      `http://localhost:8000/api/missions/${missionId}/toggle/`,
+      `${API_BASE_URL}/api/missions/${missionId}/toggle/`,
       {},
       {
         withCredentials: true,
@@ -193,7 +194,7 @@ const toggleMission = async (missionId) => {
     roadmap.value = response.data.roadmap
     syncRoadmapCache()
   } catch (err) {
-    error.value = err.response?.data?.message || '미션 상태를 변경하지 못했습니다.'
+    error.value = err.response?.data?.message || '誘몄뀡 ?곹깭瑜?蹂寃쏀븯吏 紐삵뻽?듬땲??'
     if (err.response?.data?.roadmap) {
       roadmap.value = err.response.data.roadmap
       syncRoadmapCache()
@@ -225,18 +226,18 @@ const levelProgress = (level) => {
 
 const levelStateLabel = (level) => {
   if (level.is_locked) {
-    return '잠금'
+    return '?좉툑'
   }
 
-  return isLevelCompleted(level) ? '완료' : '진행률'
+  return isLevelCompleted(level) ? '완료' : '진행중'
 }
 
 const levelProgressText = (level) => {
   if (level.is_locked) {
-    return '잠금'
+    return '?좉툑'
   }
 
-  return `진행률 ${levelProgress(level)}%`
+  return `吏꾪뻾瑜?${levelProgress(level)}%`
 }
 
 onMounted(() => {

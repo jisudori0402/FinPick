@@ -1,16 +1,15 @@
-<template>
+﻿<template>
   <section class="community-video-detail">
     <RouterLink
       class="secondary-btn back-btn icon-back-btn"
       to="/community"
-      aria-label="커뮤니티로 돌아가기"
-      title="커뮤니티로 돌아가기"
+      aria-label="而ㅻ??덊떚濡??뚯븘媛湲?
+      title="而ㅻ??덊떚濡??뚯븘媛湲?
     >
-      ←
-    </RouterLink>
+      ??    </RouterLink>
 
     <div v-if="loading" class="status-box">
-      영상을 불러오는 중입니다.
+      ?곸긽??遺덈윭?ㅻ뒗 以묒엯?덈떎.
     </div>
 
     <div v-else-if="error" class="status-box error">
@@ -30,13 +29,13 @@
       <article class="youtube-detail-card">
         <span class="board-chip">YouTube</span>
         <h1>{{ video.title }}</h1>
-        <p>{{ video.description || '영상 설명이 없습니다.' }}</p>
+        <p>{{ video.description || '?곸긽 ?ㅻ챸???놁뒿?덈떎.' }}</p>
 
         <div class="youtube-detail-meta">
-          <span>채널 {{ video.channel_title }}</span>
-          <span>업로드 {{ formatVideoDate(video.published_at) }}</span>
-          <span>조회수 {{ formatNumber(video.view_count) }}</span>
-          <span>좋아요 {{ formatNumber(video.like_count) }}</span>
+          <span>梨꾨꼸 {{ video.channel_title }}</span>
+          <span>?낅줈??{{ formatVideoDate(video.published_at) }}</span>
+          <span>議고쉶??{{ formatNumber(video.view_count) }}</span>
+          <span>醫뗭븘??{{ formatNumber(video.like_count) }}</span>
         </div>
       </article>
     </template>
@@ -47,6 +46,7 @@
 import { onMounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import axios from 'axios'
+import { API_BASE_URL } from '../services/api'
 
 const route = useRoute()
 
@@ -71,13 +71,13 @@ const loadVideo = async () => {
   error.value = ''
 
   try {
-    const response = await axios.get(`http://localhost:8000/api/youtube/videos/${route.params.videoId}/`, {
+    const response = await axios.get(`${API_BASE_URL}/api/youtube/videos/${route.params.videoId}/`, {
       withCredentials: true,
     })
 
     video.value = response.data.video
   } catch (err) {
-    error.value = err.response?.data?.message || '영상 정보를 불러오지 못했습니다.'
+    error.value = err.response?.data?.message || '?곸긽 ?뺣낫瑜?遺덈윭?ㅼ? 紐삵뻽?듬땲??'
     console.error(err)
   } finally {
     loading.value = false

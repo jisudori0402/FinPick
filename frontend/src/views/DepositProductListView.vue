@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <SidebarLayout class="products-page product-hub-page" surface="soft">
     <template #sidebar>
       <AppSidebar>
@@ -10,7 +10,7 @@
 
         <template #nav>
 
-      <nav class="product-side-nav" aria-label="상품 카테고리">
+      <nav class="product-side-nav" aria-label="?곹뭹 移댄뀒怨좊━">
         <button
           v-for="item in productNavItems"
           :key="item.key"
@@ -27,9 +27,9 @@
         <template #support>
 
       <div class="product-tip-card daily-finance-word-card">
-        <strong>오늘의 금융 한마디</strong>
+        <strong>오늘의 금융 테마</strong>
         <p>{{ todayTip }}</p>
-        <small v-if="todayTipLoading">문장을 불러오는 중입니다.</small>
+        <small v-if="todayTipLoading">臾몄옣??遺덈윭?ㅻ뒗 以묒엯?덈떎.</small>
         <small v-else-if="todayTipError">{{ todayTipError }}</small>
       </div>
         </template>
@@ -49,7 +49,7 @@
             :placeholder="searchPlaceholder"
             @input="onUnifiedSearch"
           />
-          <span aria-hidden="true">⌕</span>
+          <span aria-hidden="true">??</span>
         </label>
       </div>
 
@@ -65,11 +65,11 @@
             </div>
             <div>
               <h2>예적금</h2>
-              <p>안정적으로 자산을 모으고 이자를 받아보세요.</p>
+              <p>?덉젙?곸쑝濡??먯궛??紐⑥쑝怨??댁옄瑜?諛쏆븘蹂댁꽭??</p>
             </div>
             <button type="button" @click="setProductCategory('deposit')">
-              전체보기
-              <span>›</span>
+              ?꾩껜蹂닿린
+              <span>??</span>
             </button>
           </div>
 
@@ -84,23 +84,23 @@
                 <img
                   v-if="getBankLogoUrl(item.financial_company_name)"
                   :src="getBankLogoUrl(item.financial_company_name)"
-                  :alt="`${item.financial_company_name} 로고`"
+                  :alt="`${item.financial_company_name} 濡쒓퀬`"
                 />
-                <template v-else>{{ item.financial_company_name?.slice(0, 1) || '예' }}</template>
+                <template v-else>{{ item.financial_company_name?.slice(0, 1) || '?' }}</template>
               </span>
               <div>
-                <strong>{{ item.product_name }}</strong>
+        <strong>오늘의 금융 테마</strong>
                 <small v-if="item.recommendation_reason" class="recommend-reason">
                   {{ item.recommendation_reason }}
                 </small>
-                <small>최고 연 {{ item.max_interest_rate || item.interest_rate || '-' }}%</small>
+                <small>理쒓퀬 ??{{ item.max_interest_rate || item.interest_rate || '-' }}%</small>
               </div>
-              <span class="row-arrow">›</span>
+              <span class="row-arrow">??</span>
             </article>
           </div>
 
           <button class="more-button" type="button" @click="setProductCategory('deposit')">
-            더보기 <span>›</span>
+            ?붾낫湲?<span>??</span>
           </button>
         </div>
 
@@ -110,12 +110,12 @@
               <img src="/product_category_icons/stock-chart.png" alt="주식 아이콘" />
             </div>
             <div>
-              <h2>주식</h2>
-              <p>시장 가능성이 높은 기업에 투자해보세요.</p>
+              <h2>二쇱떇</h2>
+              <p>?쒖옣 媛?μ꽦???믪? 湲곗뾽???ъ옄?대낫?몄슂.</p>
             </div>
             <button type="button" @click="setProductCategory('stock')">
-              전체보기
-              <span>›</span>
+              ?꾩껜蹂닿린
+              <span>??</span>
             </button>
           </div>
 
@@ -127,22 +127,22 @@
               @click="openStockProduct(item.code)"
             >
               <span class="row-icon stock-icon">
-                <img v-if="item.logo_url" :src="item.logo_url" :alt="`${item.name} 로고`" />
-                <template v-else>{{ item.name?.slice(0, 1) || '주' }}</template>
+                <img v-if="item.logo_url" :src="item.logo_url" :alt="`${item.name} 濡쒓퀬`" />
+                <template v-else>{{ item.name?.slice(0, 1) || 'S' }}</template>
               </span>
               <div>
-                <strong>{{ item.name }}</strong>
+        <strong>오늘의 금융 테마</strong>
                 <small>{{ formatWon(item.current_price) }}</small>
               </div>
               <em :class="{ positive: item.change_rate > 0, negative: item.change_rate < 0 }">
                 {{ formatRate(item.change_rate) }}
               </em>
-              <span class="row-arrow">›</span>
+              <span class="row-arrow">??</span>
             </article>
           </div>
 
           <button class="more-button" type="button" @click="setProductCategory('stock')">
-            더보기 <span>›</span>
+            ?붾낫湲?<span>??</span>
           </button>
         </div>
 
@@ -158,36 +158,36 @@
           </select>
 
           <select v-model="productFilters.kind" @change="loadDepositProducts">
-            <option value="">예금+적금</option>
-            <option value="deposit">예금</option>
-            <option value="saving">적금</option>
+            <option value="">?덇툑+?곴툑</option>
+            <option value="deposit">?덇툑</option>
+            <option value="saving">?곴툑</option>
           </select>
 
           <select v-model="productFilters.ordering" @change="loadDepositProducts">
-            <option value="rate">금리 높은순</option>
-            <option value="company">은행순</option>
-            <option value="name">상품명순</option>
+            <option value="rate">湲덈━ ?믪???</option>
+            <option value="company">??됱닚</option>
+            <option value="name">?곹뭹紐낆닚</option>
           </select>
         </div>
 
         <div v-if="productCategory === 'stock'" class="product-filter-card two">
           <select v-model="stockFilters.market" @change="loadStockProducts">
-            <option value="">전체 시장</option>
+            <option value="">?꾩껜 ?쒖옣</option>
             <option v-for="market in stockMarkets" :key="market" :value="market">
               {{ market }}
             </option>
           </select>
 
           <select v-model="stockFilters.ordering" @change="loadStockProducts">
-            <option value="market_cap">시가총액 높은순</option>
-            <option value="price">현재가 높은순</option>
-            <option value="change_rate">등락률 높은순</option>
-            <option value="name">종목명순</option>
+            <option value="market_cap">?쒓?珥앹븸 ?믪???</option>
+            <option value="price">?꾩옱媛 ?믪???</option>
+            <option value="change_rate">?깅씫瑜??믪???</option>
+            <option value="name">醫낅ぉ紐낆닚</option>
           </select>
         </div>
 
         <div v-if="loading" class="status-box">
-          상품을 불러오는 중입니다.
+          ?곹뭹??遺덈윭?ㅻ뒗 以묒엯?덈떎.
         </div>
 
         <div v-else-if="error" class="status-box error">
@@ -196,11 +196,11 @@
 
         <template v-else>
           <div v-if="productCategory === 'deposit' && !depositProducts.length" class="empty product-empty">
-            표시할 예적금 상품이 없습니다.
+            ?쒖떆???덉쟻湲??곹뭹???놁뒿?덈떎.
           </div>
 
           <div v-if="productCategory === 'stock' && !stockProducts.length" class="empty product-empty">
-            표시할 주식 종목이 없습니다.
+            ?쒖떆??二쇱떇 醫낅ぉ???놁뒿?덈떎.
           </div>
 
           <p v-if="productCategory === 'stock' && stockMessage" class="lock-note">
@@ -218,7 +218,7 @@
                 class="favorite-btn"
                 :class="{ active: item.is_favorite }"
                 type="button"
-                :title="item.is_favorite ? '관심 상품 해제' : '관심 상품 추가'"
+                :title="item.is_favorite ? '愿???곹뭹 ?댁젣' : '愿???곹뭹 異붽?'"
                 @click.stop="toggleFavoriteProduct(item)"
               >
                 {{ item.is_favorite ? '★' : '☆' }}
@@ -228,21 +228,21 @@
                 <img
                   v-if="getBankLogoUrl(item.financial_company_name)"
                   :src="getBankLogoUrl(item.financial_company_name)"
-                  :alt="`${item.financial_company_name} 로고`"
+                  :alt="`${item.financial_company_name} 濡쒓퀬`"
                 />
-                <template v-else>{{ item.financial_company_name?.slice(0, 1) || '예' }}</template>
+                <template v-else>{{ item.financial_company_name?.slice(0, 1) || '?' }}</template>
               </span>
-              <small>{{ item.product_type === 'deposit' ? '예금' : '적금' }}</small>
+              <small>{{ item.product_type === 'deposit' ? '?덇툑' : '?곴툑' }}</small>
               <h3>{{ item.product_name }}</h3>
               <p>{{ item.financial_company_name }}</p>
 
               <div class="rate">
-                최고 <span>{{ item.max_interest_rate || item.interest_rate || '-' }}%</span>
+                理쒓퀬 <span>{{ item.max_interest_rate || item.interest_rate || '-' }}%</span>
               </div>
 
               <div class="product-meta">
-                <span>{{ item.best_term ? item.best_term + '개월' : '기간 정보 없음' }}</span>
-                <span>{{ item.join_way || '가입 방법 정보 없음' }}</span>
+                <span>{{ item.best_term ? item.best_term + '媛쒖썡' : '湲곌컙 ?뺣낫 ?놁쓬' }}</span>
+                <span>{{ item.join_way || '媛??諛⑸쾿 ?뺣낫 ?놁쓬' }}</span>
               </div>
             </article>
           </div>
@@ -258,59 +258,59 @@
                 class="favorite-btn"
                 :class="{ active: item.is_favorite }"
                 type="button"
-                :title="item.is_favorite ? '관심 상품 해제' : '관심 상품 추가'"
+                :title="item.is_favorite ? '愿???곹뭹 ?댁젣' : '愿???곹뭹 異붽?'"
                 @click.stop="toggleFavoriteStock(item)"
               >
                 {{ item.is_favorite ? '★' : '☆' }}
               </button>
 
               <span class="stock-card-logo">
-                <img v-if="item.logo_url" :src="item.logo_url" :alt="`${item.name} 로고`" />
-                <template v-else>{{ item.name?.slice(0, 1) || '주' }}</template>
+                <img v-if="item.logo_url" :src="item.logo_url" :alt="`${item.name} 濡쒓퀬`" />
+                <template v-else>{{ item.name?.slice(0, 1) || 'S' }}</template>
               </span>
-              <small>{{ item.market || '주식' }}</small>
+              <small>{{ item.market || '二쇱떇' }}</small>
               <h3>{{ item.name }}</h3>
               <p>{{ item.code }}</p>
 
               <div class="rate">
-                현재가 <span>{{ formatWon(item.current_price) }}</span>
+                ?꾩옱媛 <span>{{ formatWon(item.current_price) }}</span>
               </div>
 
               <div class="product-meta">
                 <span :class="{ positive: item.change_rate > 0, negative: item.change_rate < 0 }">
-                  등락률 {{ formatRate(item.change_rate) }}
+                  ?깅씫瑜?{{ formatRate(item.change_rate) }}
                 </span>
-                <span>거래량 {{ formatNumber(item.volume) }}</span>
-                <span>기준일 {{ formatStockDate(item.base_date) }}</span>
+                <span>嫄곕옒??{{ formatNumber(item.volume) }}</span>
+                <span>湲곗???{{ formatStockDate(item.base_date) }}</span>
               </div>
             </article>
           </div>
 
           <div v-if="productCategory === 'spot'" class="spot-panel product-spot-panel">
-            <h2>현물 가격 변화</h2>
+            <h2>?꾨Ъ 媛寃?蹂??</h2>
 
             <div class="category-tabs spot-tabs">
               <button :class="{ active: spotFilters.asset === 'gold' }" @click="setSpotAsset('gold')">
-                금(Gold)
+                湲?Gold)
               </button>
               <button :class="{ active: spotFilters.asset === 'silver' }" @click="setSpotAsset('silver')">
-                은(Silver)
+                ?(Silver)
               </button>
             </div>
 
             <div class="spot-toolbar">
               <label>
-                시작일
+                ?쒖옉??
                 <input type="date" v-model="spotFilters.start" @change="loadSpotPrices()" />
               </label>
 
               <label>
-                종료일
+                醫낅즺??
                 <input type="date" v-model="spotFilters.end" @change="loadSpotPrices()" />
               </label>
 
               <button class="secondary-btn" type="button" @click="resetSpotPeriod">
-                전체 기간
+                ?꾩껜 湲곌컙
               </button>
             </div>
 
@@ -318,16 +318,16 @@
 
             <div v-if="spotPrices.length" class="spot-summary">
               <div>
-                <small>선택 자산</small>
-                <strong>{{ spotAssetName }}</strong>
+                <small>?좏깮 ?먯궛</small>
+        <strong>오늘의 금융 테마</strong>
               </div>
               <div>
-                <small>최근 가격</small>
-                <strong>{{ spotLatestPrice }}</strong>
+                <small>理쒓렐 媛寃?</small>
+        <strong>오늘의 금융 테마</strong>
               </div>
               <div>
-                <small>조회 기간</small>
-                <strong>{{ spotDateRange }}</strong>
+                <small>議고쉶 湲곌컙</small>
+        <strong>오늘의 금융 테마</strong>
               </div>
             </div>
 
@@ -350,8 +350,8 @@
 
               <line class="spot-axis" x1="76" y1="28" x2="76" y2="292"></line>
               <line class="spot-axis" x1="76" y1="292" x2="690" y2="292"></line>
-              <text class="spot-title" x="44" y="16">가격($)</text>
-              <text class="spot-title" x="696" y="318" text-anchor="end">날짜</text>
+              <text class="spot-title" x="44" y="16">媛寃?$)</text>
+              <text class="spot-title" x="696" y="318" text-anchor="end">?좎쭨</text>
               <polyline :points="spotChartPoints"></polyline>
               <circle
                 v-for="point in spotChartDots"
@@ -365,7 +365,7 @@
             </svg>
 
             <div v-if="!spotPrices.length" class="empty product-empty">
-              선택한 기간의 현물 가격 데이터가 없습니다.
+              ?좏깮??湲곌컙???꾨Ъ 媛寃??곗씠?곌? ?놁뒿?덈떎.
             </div>
           </div>
 
@@ -373,11 +373,11 @@
             v-if="productCategory === 'favorites' && !filteredFavoriteItems.length"
             class="favorite-preview-panel"
           >
-            <div class="favorite-empty-icon">☆</div>
-            <h2>관심 상품</h2>
-            <p>별표를 누르거나 상세 화면에서 관심목록에 추가한 상품이 여기에 표시됩니다.</p>
+            <div class="favorite-empty-icon">?</div>
+            <h2>愿???곹뭹</h2>
+            <p>蹂꾪몴瑜??꾨Ⅴ嫄곕굹 ?곸꽭 ?붾㈃?먯꽌 愿?щぉ濡앹뿉 異붽????곹뭹???ш린???쒖떆?⑸땲??</p>
             <button class="primary-btn" type="button" @click="setProductCategory('recommended')">
-              추천 상품 둘러보기
+              異붿쿇 ?곹뭹 ?섎윭蹂닿린
             </button>
           </div>
 
@@ -396,47 +396,47 @@
                 class="favorite-btn"
                 :class="{ active: item.favorite_type === 'stock' ? item.is_favorite : item.is_favorite || item.is_subscribed }"
                 type="button"
-                title="관심 상품 해제"
+                title="愿???곹뭹 ?댁젣"
                 @click.stop="item.favorite_type === 'stock' ? toggleFavoriteStock(item) : removeFavoriteDepositItem(item)"
               >
-                {{ item.favorite_type === 'stock' ? item.is_favorite ? '★' : '☆' : '★' }}
+                {{ item.favorite_type === 'stock' ? (item.is_favorite ? '★' : '☆') : '★' }}
               </button>
 
               <span v-if="item.favorite_type === 'stock'" class="stock-card-logo">
-                <img v-if="item.logo_url" :src="item.logo_url" :alt="`${item.name} 로고`" />
-                <template v-else>{{ item.name?.slice(0, 1) || '주' }}</template>
+                <img v-if="item.logo_url" :src="item.logo_url" :alt="`${item.name} 濡쒓퀬`" />
+                <template v-else>{{ item.name?.slice(0, 1) || 'S' }}</template>
               </span>
               <span v-else class="bank-card-logo">
                 <img
                   v-if="getBankLogoUrl(item.financial_company_name)"
                   :src="getBankLogoUrl(item.financial_company_name)"
-                  :alt="`${item.financial_company_name} 로고`"
+                  :alt="`${item.financial_company_name} 濡쒓퀬`"
                 />
-                <template v-else>{{ item.financial_company_name?.slice(0, 1) || '예' }}</template>
+                <template v-else>{{ item.financial_company_name?.slice(0, 1) || '?' }}</template>
               </span>
-              <small>{{ item.favorite_type === 'stock' ? item.market || '주식' : item.product_type === 'deposit' ? '예금' : '적금' }}</small>
+              <small>{{ item.favorite_type === 'stock' ? item.market || '二쇱떇' : item.product_type === 'deposit' ? '?덇툑' : '?곴툑' }}</small>
               <h3>{{ item.favorite_type === 'stock' ? item.name : item.product_name }}</h3>
               <p>{{ item.favorite_type === 'stock' ? item.code : item.financial_company_name }}</p>
 
               <div class="rate">
                 <template v-if="item.favorite_type === 'stock'">
-                  현재가 <span>{{ formatWon(item.current_price) }}</span>
+                  ?꾩옱媛 <span>{{ formatWon(item.current_price) }}</span>
                 </template>
                 <template v-else>
-                  최고 <span>{{ item.max_interest_rate || item.interest_rate || '-' }}%</span>
+                  理쒓퀬 <span>{{ item.max_interest_rate || item.interest_rate || '-' }}%</span>
                 </template>
               </div>
 
               <div class="product-meta">
                 <template v-if="item.favorite_type === 'stock'">
                   <span :class="{ positive: item.change_rate > 0, negative: item.change_rate < 0 }">
-                    등락률 {{ formatRate(item.change_rate) }}
+                    ?깅씫瑜?{{ formatRate(item.change_rate) }}
                   </span>
-                  <span>기준일 {{ formatStockDate(item.base_date) }}</span>
+                  <span>湲곗???{{ formatStockDate(item.base_date) }}</span>
                 </template>
                 <template v-else>
-                  <span>{{ item.best_term ? item.best_term + '개월' : '기간 정보 없음' }}</span>
-                  <span>{{ item.is_subscribed ? '관심목록 추가됨' : '별표 관심 상품' }}</span>
+                  <span>{{ item.best_term ? item.best_term + '媛쒖썡' : '湲곌컙 ?뺣낫 ?놁쓬' }}</span>
+                  <span>{{ item.is_subscribed ? '가입 관심 추가됨' : '관심 상품' }}</span>
                 </template>
               </div>
             </article>
@@ -451,6 +451,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
+import { API_BASE_URL } from '../services/api'
 import AppSidebar from '../components/AppSidebar.vue'
 import SidebarLayout from '../components/SidebarLayout.vue'
 
@@ -477,31 +478,31 @@ const spotPrices = ref([])
 const spotMessage = ref('')
 const stockMessage = ref('')
 const aiRecommendationMessage = ref('')
-const todayTip = ref('작은 저축 습관이 내일의 선택지를 넓혀줘요.')
+const todayTip = ref('?묒? ?異??듦????댁씪???좏깮吏瑜??볧?以섏슂.')
 const todayTipLoading = ref(false)
 const todayTipError = ref('')
 let depositRequestSeq = 0
 let stockRequestSeq = 0
 
 const productNavItems = [
-  { key: 'recommended', label: '추천 상품', icon: '✨' },
-  { key: 'deposit', label: '예적금', icon: '💰' },
-  { key: 'stock', label: '주식', icon: '📈' },
-  { key: 'spot', label: '현물', icon: '🪙' },
-  { key: 'favorites', label: '관심 상품', icon: '⭐' },
+  { key: 'recommended', label: '추천 상품', icon: '*' },
+  { key: 'deposit', label: '예적금', icon: 'D' },
+  { key: 'stock', label: '주식', icon: 'S' },
+  { key: 'spot', label: '금은', icon: 'G' },
+  { key: 'favorites', label: '관심 상품', icon: 'F' },
 ]
 
 const bankLogoRules = [
-  { keywords: ['신한'], file: 'shinhan.png' },
-  { keywords: ['국민', 'KB'], file: 'kb.png' },
-  { keywords: ['하나'], file: 'hana.png' },
-  { keywords: ['우리'], file: 'woori.png' },
-  { keywords: ['농협', 'NH'], file: 'nonghyup.png' },
-  { keywords: ['기업', 'IBK'], file: 'ibk.png' },
-  { keywords: ['카카오'], file: 'kakao.png' },
-  { keywords: ['케이뱅크', '케이은행', 'K뱅크', 'Kbank'], file: 'kbank.png' },
-  { keywords: ['토스'], file: 'toss.png' },
-  { keywords: ['SC', '스탠다드차타드', '제일'], file: 'sc.png' },
+  { keywords: ['shinhan', '신한'], file: 'shinhan.png' },
+  { keywords: ['kb', '국민'], file: 'kb.png' },
+  { keywords: ['hana', '하나'], file: 'hana.png' },
+  { keywords: ['woori', '우리'], file: 'woori.png' },
+  { keywords: ['nh', '농협'], file: 'nonghyup.png' },
+  { keywords: ['ibk', '기업'], file: 'ibk.png' },
+  { keywords: ['kakao', '카카오'], file: 'kakao.png' },
+  { keywords: ['kbank', '케이'], file: 'kbank.png' },
+  { keywords: ['toss', '토스'], file: 'toss.png' },
+  { keywords: ['sc'], file: 'sc.png' },
 ]
 
 const getBankLogoUrl = (companyName = '') => {
@@ -533,20 +534,20 @@ const spotFilters = ref({
 })
 
 const spotAssetLabels = {
-  gold: '금(Gold)',
-  silver: '은(Silver)',
+  gold: '湲?Gold)',
+  silver: '?(Silver)',
 }
 
 const categoryMeta = {
   recommended: {
     title: '추천 상품',
-    description: 'FinPick이 엄선한 금융 상품을 확인해보세요.',
+    description: '나에게 맞는 금융 상품을 확인해보세요.',
     placeholder: '검색어를 입력하세요',
   },
   deposit: {
     title: '예적금',
     description: '은행별 예금과 적금을 비교해보세요.',
-    placeholder: '상품명 검색',
+    placeholder: '상품명 또는 은행명 검색',
   },
   stock: {
     title: '주식',
@@ -554,18 +555,18 @@ const categoryMeta = {
     placeholder: '종목명 또는 종목코드 검색',
   },
   spot: {
-    title: '현물',
+    title: '금은',
     description: '금과 은 가격 흐름을 확인해보세요.',
-    placeholder: '현물은 아래 조건으로 조회하세요',
+    placeholder: '검색어를 입력하세요',
   },
   favorites: {
     title: '관심 상품',
-    description: '저장한 관심 상품을 모아볼 수 있는 공간입니다.',
+    description: '저장한 관심 상품을 모아볼 수 있습니다.',
     placeholder: '관심 상품 검색',
   },
 }
 
-const currentCategoryTitle = computed(() => categoryMeta[productCategory.value]?.title || '상품')
+const currentCategoryTitle = computed(() => categoryMeta[productCategory.value]?.title || '?곹뭹')
 const currentCategoryDescription = computed(() => categoryMeta[productCategory.value]?.description || '')
 const searchPlaceholder = computed(() => categoryMeta[productCategory.value]?.placeholder || '검색어를 입력하세요')
 
@@ -657,7 +658,7 @@ const topStockProducts = computed(() => {
 })
 
 const spotAssetName = computed(() => {
-  return spotAssetLabels[spotFilters.value.asset] || '현물'
+  return spotAssetLabels[spotFilters.value.asset] || '?꾨Ъ'
 })
 
 const spotLatestPrice = computed(() => {
@@ -793,7 +794,7 @@ const loadDepositProducts = async (overrides = {}) => {
 
   try {
     const response = await axios.get(
-      `http://localhost:8000/api/deposit-products/?${buildDepositParams(overrides).toString()}`,
+      `${API_BASE_URL}/api/deposit-products/?${buildDepositParams(overrides).toString()}`,
       {
         withCredentials: true,
       },
@@ -810,7 +811,7 @@ const loadDepositProducts = async (overrides = {}) => {
       return
     }
 
-    error.value = err.response?.data?.message || '상품 목록을 불러오지 못했습니다.'
+    error.value = err.response?.data?.message || '?곹뭹 紐⑸줉??遺덈윭?ㅼ? 紐삵뻽?듬땲??'
     console.error(err)
   } finally {
     if (requestId === depositRequestSeq) {
@@ -827,7 +828,7 @@ const loadStockProducts = async (overrides = {}) => {
 
   try {
     const response = await axios.get(
-      `http://localhost:8000/api/stocks/?${buildStockParams(overrides).toString()}`,
+      `${API_BASE_URL}/api/stocks/?${buildStockParams(overrides).toString()}`,
       {
         withCredentials: true,
       },
@@ -846,7 +847,7 @@ const loadStockProducts = async (overrides = {}) => {
     }
 
     if (productCategory.value !== 'recommended') {
-      error.value = err.response?.data?.message || '주식 목록을 불러오지 못했습니다.'
+      error.value = err.response?.data?.message || '二쇱떇 紐⑸줉??遺덈윭?ㅼ? 紐삵뻽?듬땲??'
     }
     console.error(err)
   } finally {
@@ -876,17 +877,17 @@ const onUnifiedSearch = (event) => {
 
 const loadRecommendations = async () => {
   try {
-    aiRecommendationMessage.value = 'AI가 금융 유형에 맞는 상품을 추천하고 있어요.'
+    aiRecommendationMessage.value = 'AI媛 湲덉쑖 ?좏삎??留욌뒗 ?곹뭹??異붿쿇?섍퀬 ?덉뼱??'
 
-    const response = await axios.get('http://localhost:8000/api/ai/recommend-products/', {
+    const response = await axios.get(`${API_BASE_URL}/api/ai/recommend-products/`, {
       withCredentials: true,
     })
 
     aiDepositProducts.value = response.data.products || response.data.deposits || []
     aiStockProducts.value = response.data.stocks || []
-    aiRecommendationMessage.value = response.data.message || `${response.data.financial_type || '금융 새싹'} 유형 기준 오늘의 추천 상품이에요.`
+    aiRecommendationMessage.value = response.data.message || `${response.data.financial_type || '湲덉쑖 ?덉떦'} ?좏삎 湲곗? ?ㅻ뒛??異붿쿇 ?곹뭹?댁뿉??`
   } catch (err) {
-    aiRecommendationMessage.value = err.response?.data?.message || 'AI 추천을 불러오지 못해 기본 상품을 보여드려요.'
+    aiRecommendationMessage.value = err.response?.data?.message || 'AI 異붿쿇??遺덈윭?ㅼ? 紐삵빐 湲곕낯 ?곹뭹??蹂댁뿬?쒕젮??'
     console.error(err)
   }
 }
@@ -896,14 +897,14 @@ const loadTodayTip = async () => {
   todayTipError.value = ''
 
   try {
-    const response = await axios.get('http://localhost:8000/api/ai/today-message/', {
+    const response = await axios.get(`${API_BASE_URL}/api/ai/today-message/`, {
       withCredentials: true,
     })
     if (response.data.message) {
       todayTip.value = response.data.message
     }
   } catch (err) {
-    todayTipError.value = err.response?.data?.message || '오늘의 금융 한마디를 불러오지 못했습니다.'
+    todayTipError.value = err.response?.data?.message || '?ㅻ뒛??湲덉쑖 ?쒕쭏?붾? 遺덈윭?ㅼ? 紐삵뻽?듬땲??'
   } finally {
     todayTipLoading.value = false
   }
@@ -914,14 +915,14 @@ const loadFavoriteProducts = async () => {
   error.value = ''
 
   try {
-    const response = await axios.get('http://localhost:8000/api/favorite-deposit-products/', {
+    const response = await axios.get(`${API_BASE_URL}/api/favorite-deposit-products/`, {
       withCredentials: true,
     })
 
     favoriteProducts.value = response.data.products || []
     favoriteStocks.value = response.data.stocks || []
   } catch (err) {
-    error.value = err.response?.data?.message || '관심 상품을 불러오지 못했습니다.'
+    error.value = err.response?.data?.message || '愿???곹뭹??遺덈윭?ㅼ? 紐삵뻽?듬땲??'
     console.error(err)
   } finally {
     loading.value = false
@@ -945,18 +946,18 @@ const loadSpotPrices = async (asset = spotFilters.value.asset) => {
   }
 
   try {
-    const response = await axios.get(`http://localhost:8000/api/spot-prices/?${params.toString()}`, {
+    const response = await axios.get(`${API_BASE_URL}/api/spot-prices/?${params.toString()}`, {
       withCredentials: true,
     })
 
     spotPrices.value = response.data.prices || []
 
     if (!spotPrices.value.length) {
-      spotMessage.value = '선택한 기간에 해당하는 데이터가 없습니다.'
+      spotMessage.value = '?좏깮??湲곌컙???대떦?섎뒗 ?곗씠?곌? ?놁뒿?덈떎.'
     }
   } catch (err) {
     spotPrices.value = []
-    spotMessage.value = err.response?.data?.message || '현물 가격 데이터를 불러오지 못했습니다.'
+    spotMessage.value = err.response?.data?.message || '?꾨Ъ 媛寃??곗씠?곕? 遺덈윭?ㅼ? 紐삵뻽?듬땲??'
     console.error(err)
   } finally {
     loading.value = false
@@ -978,7 +979,7 @@ const resetSpotPeriod = async () => {
 const toggleFavoriteStock = async (item) => {
   try {
     const response = await axios.post(
-      `http://localhost:8000/api/stocks/${item.code}/favorite/`,
+      `${API_BASE_URL}/api/stocks/${item.code}/favorite/`,
       {
         code: item.code,
         isin_code: item.isin_code,
@@ -1010,7 +1011,7 @@ const toggleFavoriteStock = async (item) => {
       favoriteStocks.value = favoriteStocks.value.filter((stock) => stock.code !== item.code)
     }
   } catch (err) {
-    error.value = err.response?.data?.message || '관심 상품을 변경하지 못했습니다.'
+    error.value = err.response?.data?.message || '愿???곹뭹??蹂寃쏀븯吏 紐삵뻽?듬땲??'
     console.error(err)
   }
 }
@@ -1018,7 +1019,7 @@ const toggleFavoriteStock = async (item) => {
 const toggleFavoriteProduct = async (item) => {
   try {
     const response = await axios.post(
-      `http://localhost:8000/api/deposit-products/${item.id}/favorite/`,
+      `${API_BASE_URL}/api/deposit-products/${item.id}/favorite/`,
       {},
       {
         withCredentials: true,
@@ -1038,7 +1039,7 @@ const toggleFavoriteProduct = async (item) => {
       favoriteProducts.value = [updatedProduct, ...favoriteProducts.value]
     }
   } catch (err) {
-    error.value = err.response?.data?.message || '관심 상품을 변경하지 못했습니다.'
+    error.value = err.response?.data?.message || '愿???곹뭹??蹂寃쏀븯吏 紐삵뻽?듬땲??'
     console.error(err)
   }
 }
@@ -1047,7 +1048,7 @@ const removeFavoriteDepositItem = async (item) => {
   try {
     if (item.is_favorite) {
       await axios.post(
-        `http://localhost:8000/api/deposit-products/${item.id}/favorite/`,
+        `${API_BASE_URL}/api/deposit-products/${item.id}/favorite/`,
         {},
         {
           withCredentials: true,
@@ -1057,7 +1058,7 @@ const removeFavoriteDepositItem = async (item) => {
 
     if (item.is_subscribed) {
       await axios.delete(
-        `http://localhost:8000/api/deposit-products/${item.id}/join/`,
+        `${API_BASE_URL}/api/deposit-products/${item.id}/join/`,
         {
           withCredentials: true,
         },
@@ -1077,7 +1078,7 @@ const removeFavoriteDepositItem = async (item) => {
       }
     })
   } catch (err) {
-    error.value = err.response?.data?.message || '관심 상품을 제거하지 못했습니다.'
+    error.value = err.response?.data?.message || '愿???곹뭹???쒓굅?섏? 紐삵뻽?듬땲??'
     console.error(err)
   }
 }
@@ -1158,3 +1159,7 @@ onMounted(() => {
   }
 })
 </script>
+
+
+
+

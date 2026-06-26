@@ -1,16 +1,15 @@
-<template>
+﻿<template>
   <section class="card panel deposit-detail-page">
     <RouterLink
       class="secondary-btn back-btn icon-back-btn"
       to="/deposit-products?category=deposit"
-      aria-label="예적금 전체상품 목록으로"
-      title="예적금 전체상품 목록으로"
+      aria-label="?덉쟻湲??꾩껜?곹뭹 紐⑸줉?쇰줈"
+      title="?덉쟻湲??꾩껜?곹뭹 紐⑸줉?쇰줈"
     >
-      ←
-    </RouterLink>
+      ??    </RouterLink>
 
     <div v-if="loading" class="status-box">
-      상품 정보를 불러오는 중입니다.
+      ?곹뭹 ?뺣낫瑜?遺덈윭?ㅻ뒗 以묒엯?덈떎.
     </div>
 
     <div v-else-if="error" class="status-box error">
@@ -25,25 +24,25 @@
 
       <div class="deposit-info-grid">
         <article class="deposit-info-card">
-          <span class="deposit-info-icon">은행</span>
+          <span class="deposit-info-icon">???</span>
           <div>
-            <small>은행</small>
+            <small>???</small>
             <strong>{{ product.financial_company_name || '-' }}</strong>
           </div>
         </article>
 
         <article class="deposit-info-card">
-          <span class="deposit-info-icon">방법</span>
+          <span class="deposit-info-icon">諛⑸쾿</span>
           <div>
-            <small>가입 방법</small>
+            <small>媛??諛⑸쾿</small>
             <strong>{{ product.join_way || '-' }}</strong>
           </div>
         </article>
 
         <article class="deposit-info-card">
-          <span class="deposit-info-icon">대상</span>
+          <span class="deposit-info-icon">???</span>
           <div>
-            <small>가입 대상</small>
+            <small>媛?????</small>
             <strong>{{ product.join_member || '-' }}</strong>
           </div>
         </article>
@@ -51,7 +50,7 @@
 
       <div class="deposit-note-grid">
         <article class="deposit-note-card">
-          <small>우대 조건</small>
+          <small>?곕? 議곌굔</small>
           <ul v-if="formatNoteLines(product.special_condition).length" class="deposit-note-list">
             <li
               v-for="line in formatNoteLines(product.special_condition)"
@@ -64,7 +63,7 @@
         </article>
 
         <article class="deposit-note-card">
-          <small>기타 안내</small>
+          <small>湲고? ?덈궡</small>
           <ul v-if="formatNoteLines(product.etc_note).length" class="deposit-note-list">
             <li
               v-for="line in formatNoteLines(product.etc_note)"
@@ -83,12 +82,11 @@
           type="button"
           @click="toggleInterestProduct"
         >
-          {{ product.is_subscribed ? '관심목록에서 제거하기' : '관심목록에 추가하기' }}
+          {{ product.is_subscribed ? '愿?щぉ濡앹뿉???쒓굅?섍린' : '愿?щぉ濡앹뿉 異붽??섍린' }}
         </button>
 
         <button class="secondary-btn" type="button" @click="goToBankSearch">
-          근처 은행 검색
-        </button>
+          洹쇱쿂 ???寃??        </button>
       </div>
 
       <p v-if="joinMessage" class="lock-note">{{ joinMessage }}</p>
@@ -96,10 +94,10 @@
       <table class="detail-table">
         <thead>
           <tr>
-            <th>기간</th>
-            <th>금리유형</th>
-            <th>기본금리</th>
-            <th>최고금리</th>
+            <th>湲곌컙</th>
+            <th>湲덈━?좏삎</th>
+            <th>湲곕낯湲덈━</th>
+            <th>理쒓퀬湲덈━</th>
           </tr>
         </thead>
         <tbody>
@@ -107,7 +105,7 @@
             v-for="option in product.options"
             :key="`${option.saving_term}-${option.interest_rate_type_name}-${option.reserve_type_name}`"
           >
-            <td>{{ option.saving_term ? option.saving_term + '개월' : '-' }}</td>
+            <td>{{ option.saving_term ? option.saving_term + '媛쒖썡' : '-' }}</td>
             <td>{{ option.interest_rate_type_name || option.reserve_type_name || '-' }}</td>
             <td>{{ option.interest_rate ? option.interest_rate + '%' : '-' }}</td>
             <td>{{ option.max_interest_rate ? option.max_interest_rate + '%' : '-' }}</td>
@@ -122,6 +120,7 @@
 import { onMounted, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
+import { API_BASE_URL } from '../services/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -134,8 +133,8 @@ const joinMessage = ref('')
 const formatNoteLines = (text) => {
   return String(text || '')
     .replace(/\r\n/g, '\n')
-    .split(/\n|(?<=다\.)|(?<=요\.)|(?<=함\.)|(?<=음\.)|(?<=\))\s*,|,\s*(?=\d+\.)/g)
-    .map((line) => line.replace(/^[-ㆍ·\s]+/, '').trim())
+    .split(/\n|(?<=??.)|(?<=??.)|(?<=??.)|(?<=??.)|(?<=\))\s*,|,\s*(?=\d+\.)/g)
+    .map((line) => line.replace(/^[-?띉?s]+/, '').trim())
     .filter(Boolean)
 }
 
@@ -145,7 +144,7 @@ const loadProduct = async () => {
 
   try {
     const response = await axios.get(
-      `http://localhost:8000/api/deposit-products/${route.params.id}/`,
+      `${API_BASE_URL}/api/deposit-products/${route.params.id}/`,
       {
         withCredentials: true,
       },
@@ -153,7 +152,7 @@ const loadProduct = async () => {
 
     product.value = response.data.product
   } catch (err) {
-    error.value = err.response?.data?.message || '상품 정보를 불러오지 못했습니다.'
+    error.value = err.response?.data?.message || '?곹뭹 ?뺣낫瑜?遺덈윭?ㅼ? 紐삵뻽?듬땲??'
     console.error(err)
   } finally {
     loading.value = false
@@ -167,7 +166,7 @@ const toggleInterestProduct = async () => {
     const requestConfig = {
       withCredentials: true,
     }
-    const url = `http://localhost:8000/api/deposit-products/${product.value.id}/join/`
+    const url = `${API_BASE_URL}/api/deposit-products/${product.value.id}/join/`
     const response = product.value.is_subscribed
       ? await axios.delete(url, requestConfig)
       : await axios.post(
@@ -183,7 +182,7 @@ const toggleInterestProduct = async () => {
     }
     joinMessage.value = response.data.message
   } catch (err) {
-    joinMessage.value = err.response?.data?.message || '관심목록을 변경하지 못했습니다.'
+    joinMessage.value = err.response?.data?.message || '愿?щぉ濡앹쓣 蹂寃쏀븯吏 紐삵뻽?듬땲??'
     console.error(err)
   }
 }

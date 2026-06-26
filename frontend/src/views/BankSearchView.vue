@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <section class="card panel bank-search-page">
     <RouterLink
       class="secondary-btn back-btn icon-back-btn bank-back-btn"
@@ -6,14 +6,13 @@
       aria-label="상품 상세로"
       title="상품 상세로"
     >
-      ←
-    </RouterLink>
+      ??    </RouterLink>
 
     <h2>근처 은행 검색</h2>
 
     <p v-if="product">
-      <strong>{{ product.financial_company_name }}</strong>
-      <span> 영업점을 지도에서 찾아보세요.</span>
+        <strong>오늘의 금융 테마</strong>
+      <span> ?곸뾽?먯쓣 吏?꾩뿉??李얠븘蹂댁꽭??</span>
     </p>
 
     <div class="filter-row bank-filter-row">
@@ -23,7 +22,7 @@
         @keyup.enter="searchBankLocation"
       />
       <button class="primary-btn" type="button" @click="searchBankLocation">
-        검색
+        寃??
       </button>
     </div>
 
@@ -52,6 +51,7 @@
 import { nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import axios from 'axios'
+import { API_BASE_URL } from '../services/api'
 
 const route = useRoute()
 
@@ -71,20 +71,20 @@ let routeStartMarker = null
 const loadProduct = async () => {
   try {
     const response = await axios.get(
-      `http://localhost:8000/api/deposit-products/${route.params.productId}/`,
+      `${API_BASE_URL}/api/deposit-products/${route.params.productId}/`,
       {
         withCredentials: true,
       },
     )
     product.value = response.data.product
   } catch (err) {
-    bankSearchMessage.value = err.response?.data?.message || '상품 정보를 불러오지 못했습니다.'
+    bankSearchMessage.value = err.response?.data?.message || '?곹뭹 ?뺣낫瑜?遺덈윭?ㅼ? 紐삵뻽?듬땲??'
     console.error(err)
   }
 }
 
 const loadMapConfig = async () => {
-  const response = await axios.get('http://localhost:8000/api/map-config/', {
+  const response = await axios.get(`${API_BASE_URL}/api/map-config/`, {
     withCredentials: true,
   })
   kakaoMapAppKey = response.data.kakao_map_app_key || ''
@@ -93,7 +93,7 @@ const loadMapConfig = async () => {
 const loadKakaoMap = () => {
   return new Promise((resolve, reject) => {
     if (!kakaoMapAppKey) {
-      reject(new Error('Kakao Maps JavaScript 키가 설정되지 않았습니다.'))
+      reject(new Error('Kakao Maps JavaScript ?ㅺ? ?ㅼ젙?섏? ?딆븯?듬땲??'))
       return
     }
 
@@ -105,7 +105,7 @@ const loadKakaoMap = () => {
     const existingScript = document.querySelector('script[data-kakao-map-sdk="true"]')
     if (existingScript) {
       existingScript.addEventListener('load', () => window.kakao.maps.load(resolve), { once: true })
-      existingScript.addEventListener('error', () => reject(new Error('Kakao Maps를 불러오지 못했습니다.')), { once: true })
+      existingScript.addEventListener('error', () => reject(new Error('Kakao Maps瑜?遺덈윭?ㅼ? 紐삵뻽?듬땲??')), { once: true })
       return
     }
 
@@ -113,7 +113,7 @@ const loadKakaoMap = () => {
     script.dataset.kakaoMapSdk = 'true'
     script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${kakaoMapAppKey}&libraries=services&autoload=false`
     script.onload = () => window.kakao.maps.load(resolve)
-    script.onerror = () => reject(new Error('Kakao Maps를 불러오지 못했습니다.'))
+    script.onerror = () => reject(new Error('Kakao Maps瑜?遺덈윭?ㅼ? 紐삵뻽?듬땲??'))
     document.head.appendChild(script)
   })
 }
@@ -169,15 +169,15 @@ const searchNearbyBanks = (lat, lng) => {
   places.keywordSearch((keyword), (data, status) => {
     if (status !== window.kakao.maps.services.Status.OK) {
       nearbyBanks.value = []
-      bankSearchMessage.value = `${keyword} 영업점을 찾지 못했습니다.`
+      bankSearchMessage.value = `${keyword} ?곸뾽?먯쓣 李얠? 紐삵뻽?듬땲??`
       return
     }
 
     clearBankMarkers()
 
-    const bankNameWithoutSuffix = bankName.replace('은행', '')
+      const bankNameWithoutSuffix = bankName.replace('은행', '')
     const filteredBanks = data.filter((bank) => {
-      return !bankName || bank.place_name.includes(bankNameWithoutSuffix) || bank.place_name.includes(bankName)
+      const bankNameWithoutSuffix = bankName.replace('은행', '')
     })
 
     nearbyBanks.value = filteredBanks
@@ -199,7 +199,7 @@ const searchNearbyBanks = (lat, lng) => {
     })
 
     bankMap.setCenter(location)
-    bankSearchMessage.value = `${keyword} 영업점 ${filteredBanks.length}개를 찾았습니다.`
+    bankSearchMessage.value = `${keyword} ?곸뾽??${filteredBanks.length}媛쒕? 李얠븯?듬땲??`
   }, {
     location,
     radius: 3000,
@@ -213,14 +213,14 @@ const searchBankLocation = async () => {
   try {
     await loadKakaoMap()
   } catch (err) {
-    bankSearchMessage.value = `${err.message} .env에 KAKAO_MAP_APP_KEY를 설정해 주세요.`
+    bankSearchMessage.value = `${err.message} .env??KAKAO_MAP_APP_KEY瑜??ㅼ젙??二쇱꽭??`
     return
   }
 
   const keyword = bankSearchKeyword.value.trim()
 
   if (!keyword) {
-    bankSearchMessage.value = '주소 또는 장소를 입력해 주세요.'
+    bankSearchMessage.value = '二쇱냼 ?먮뒗 ?μ냼瑜??낅젰??二쇱꽭??'
     return
   }
 
@@ -236,7 +236,7 @@ const searchBankLocation = async () => {
     const places = new window.kakao.maps.services.Places()
     places.keywordSearch(keyword, (data, placeStatus) => {
       if (placeStatus !== window.kakao.maps.services.Status.OK || !data.length) {
-        bankSearchMessage.value = '입력한 위치를 찾지 못했습니다.'
+        bankSearchMessage.value = '?낅젰???꾩튂瑜?李얠? 紐삵뻽?듬땲??'
         return
       }
 
@@ -260,11 +260,11 @@ const moveToBank = (bank) => {
 
 const drawRouteToBank = async (bank) => {
   clearRoute()
-  routeMessage.value = '멀티캠퍼스 역삼에서 선택한 은행까지 경로를 불러오는 중입니다.'
+  routeMessage.value = '硫?곗틺?쇱뒪 ??궪?먯꽌 ?좏깮????됯퉴吏 寃쎈줈瑜?遺덈윭?ㅻ뒗 以묒엯?덈떎.'
 
   try {
     const response = await axios.get(
-      `http://localhost:8000/api/bank-route/?lng=${bank.x}&lat=${bank.y}`,
+      `${API_BASE_URL}/api/bank-route/?lng=${bank.x}&lat=${bank.y}`,
       {
         withCredentials: true,
       },
@@ -275,7 +275,7 @@ const drawRouteToBank = async (bank) => {
     })
 
     if (!path.length) {
-      routeMessage.value = '표시할 경로 좌표가 없습니다.'
+      routeMessage.value = '?쒖떆??寃쎈줈 醫뚰몴媛 ?놁뒿?덈떎.'
       return
     }
 
@@ -300,9 +300,9 @@ const drawRouteToBank = async (bank) => {
 
     const km = response.data.distance ? (response.data.distance / 1000).toFixed(1) : '-'
     const min = response.data.duration ? Math.round(response.data.duration / 60) : '-'
-    routeMessage.value = `멀티캠퍼스 역삼 → ${bank.place_name}: 약 ${km}km, ${min}분`
+    routeMessage.value = `멀티캠에서 ${bank.place_name}: 약 ${km}km, ${min}분`
   } catch (err) {
-    routeMessage.value = err.response?.data?.message || '경로를 불러오지 못했습니다.'
+    routeMessage.value = err.response?.data?.message || '寃쎈줈瑜?遺덈윭?ㅼ? 紐삵뻽?듬땲??'
     console.error(err)
   }
 }
@@ -313,9 +313,9 @@ onMounted(async () => {
 
   try {
     await renderBankMap()
-    bankSearchMessage.value = '주소 또는 장소를 입력해 주변 은행을 검색해보세요.'
+    bankSearchMessage.value = '주소 또는 장소를 입력한 뒤 은행을 검색해보세요.'
   } catch (err) {
-    bankSearchMessage.value = `${err.message} .env에 KAKAO_MAP_APP_KEY를 설정해 주세요.`
+    bankSearchMessage.value = `${err.message} .env의 KAKAO_MAP_APP_KEY를 확인해주세요.`
   }
 })
 

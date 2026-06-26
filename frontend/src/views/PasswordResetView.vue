@@ -1,14 +1,13 @@
-<template>
+﻿<template>
   <section class="password-change-page">
     <div class="password-change-card">
-      <span class="detail-kicker">계정 찾기</span>
-      <h1>비밀번호 찾기</h1>
-      <p>아이디와 이름을 확인한 뒤 새 비밀번호로 재설정할 수 있어요.</p>
+      <span class="detail-kicker">怨꾩젙 李얘린</span>
+      <h1>鍮꾨?踰덊샇 李얘린</h1>
+      <p>?꾩씠?붿? ?대쫫???뺤씤??????鍮꾨?踰덊샇濡??ъ꽕?뺥븷 ???덉뼱??</p>
 
       <form @submit.prevent="submitPasswordReset">
         <label>
-          아이디
-          <input
+          ?꾩씠??          <input
             v-model="username"
             autocomplete="username"
             required
@@ -16,7 +15,7 @@
         </label>
 
         <label>
-          이름
+          ?대쫫
           <input
             v-model="name"
             autocomplete="name"
@@ -25,7 +24,7 @@
         </label>
 
         <label>
-          새 비밀번호
+          ??鍮꾨?踰덊샇
           <input
             v-model="newPassword"
             type="password"
@@ -35,7 +34,7 @@
         </label>
 
         <label>
-          새 비밀번호 확인
+          ??鍮꾨?踰덊샇 ?뺤씤
           <input
             v-model="newPasswordConfirm"
             type="password"
@@ -54,7 +53,7 @@
 
         <div class="password-change-actions">
           <RouterLink class="secondary-btn" to="/login">
-            취소
+            痍⑥냼
           </RouterLink>
           <button class="primary-btn" type="submit" :disabled="isSubmitting">
             {{ isSubmitting ? '확인 중...' : '재설정하기' }}
@@ -69,6 +68,7 @@
 import { ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import axios from 'axios'
+import { API_BASE_URL } from '../services/api'
 
 const router = useRouter()
 
@@ -85,21 +85,21 @@ const submitPasswordReset = async () => {
   message.value = ''
 
   if (newPassword.value !== newPasswordConfirm.value) {
-    error.value = '새 비밀번호가 일치하지 않습니다.'
+    error.value = '??鍮꾨?踰덊샇媛 ?쇱튂?섏? ?딆뒿?덈떎.'
     return
   }
 
   isSubmitting.value = true
 
   try {
-    const response = await axios.post('http://localhost:8000/api/password-reset/', {
+    const response = await axios.post(`${API_BASE_URL}/api/password-reset/`, {
       username: username.value,
       name: name.value,
       new_password: newPassword.value,
       new_password_confirm: newPasswordConfirm.value,
     })
 
-    message.value = response.data.message || '비밀번호가 재설정되었습니다.'
+    message.value = response.data.message || '鍮꾨?踰덊샇媛 ?ъ꽕?뺣릺?덉뒿?덈떎.'
     username.value = ''
     name.value = ''
     newPassword.value = ''
@@ -109,7 +109,7 @@ const submitPasswordReset = async () => {
       router.push('/login')
     }, 900)
   } catch (err) {
-    error.value = err.response?.data?.message || '비밀번호 재설정에 실패했습니다.'
+    error.value = err.response?.data?.message || '鍮꾨?踰덊샇 ?ъ꽕?뺤뿉 ?ㅽ뙣?덉뒿?덈떎.'
     console.error(err)
   } finally {
     isSubmitting.value = false

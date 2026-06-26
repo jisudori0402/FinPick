@@ -1,21 +1,21 @@
-<template>
+﻿<template>
   <section class="diagnosis-result-container">
     <div v-if="!result" class="no-result-panel">
-      <h2>진단 결과가 없습니다</h2>
-      <p>금융 진단을 통해 나의 금융 성향을 알아보세요.</p>
+      <h2>吏꾨떒 寃곌낵媛 ?놁뒿?덈떎</h2>
+      <p>湲덉쑖 吏꾨떒???듯빐 ?섏쓽 湲덉쑖 ?깊뼢???뚯븘蹂댁꽭??</p>
       <RouterLink class="primary-btn" to="/diagnosis">
-        금융 진단하러 가기
+        湲덉쑖 吏꾨떒?섎윭 媛湲?
       </RouterLink>
     </div>
 
     <div v-else class="result-wrapper">
       <div class="result-hero">
         <div>
-          <p class="result-eyebrow">🎉 진단이 완료되었어요!</p>
-          <span class="result-kicker">당신의 금융 성장 레벨은</span>
+          <p class="result-eyebrow">?럦 吏꾨떒???꾨즺?섏뿀?댁슂!</p>
+          <span class="result-kicker">?뱀떊??湲덉쑖 ?깆옣 ?덈꺼?</span>
           <h1>
             <span v-if="resultLevel">{{ resultLevel }}</span>
-            <span v-else class="level-loading">레벨 확인 중</span>
+            <span v-else class="level-loading">?덈꺼 ?뺤씤 以?</span>
             {{ resultName }}
           </h1>
           <p>{{ result.intro }}</p>
@@ -33,7 +33,7 @@
             <span class="info-tooltip" tabindex="0">
               i
               <span class="tooltip-bubble">
-                진단 답변의 저축 습관, 소비 관리, 투자 준비도, 목표 명확도를 100점 기준으로 환산한 점수예요.
+                吏꾨떒 ?듬????異??듦?, ?뚮퉬 愿由? ?ъ옄 以鍮꾨룄, 紐⑺몴 紐낇솗?꾨? 100??湲곗??쇰줈 ?섏궛???먯닔?덉슂.
               </span>
             </span>
           </div>
@@ -52,7 +52,7 @@
               </svg>
               <div class="circle-text">
                 <span class="score">{{ result.readiness_score }}</span>
-                <span class="label">(100점 만점)</span>
+                <span class="label">(100??留뚯젏)</span>
               </div>
             </div>
 
@@ -62,7 +62,7 @@
                 <div>
                   <div class="bar-label">
                     <strong>{{ item.label }}</strong>
-                    <span>{{ item.score }}점</span>
+                    <span>{{ item.score }}??</span>
                   </div>
                   <div class="mini-bar">
                     <span :style="{ width: item.percent + '%' }"></span>
@@ -73,9 +73,9 @@
           </div>
 
           <div class="readiness-comment">
-            <span class="quote-mark">“</span>
+            <span class="quote-mark">??</span>
             <div>
-              <h2>FinPick 코멘트</h2>
+              <h2>FinPick 肄붾찘??</h2>
               <p>{{ result.finpick_comment }}</p>
             </div>
           </div>
@@ -83,11 +83,11 @@
 
         <div class="result-card type-card">
           <div class="card-title-row">
-            <h2>나의 금융 유형</h2>
+            <h2>?섏쓽 湲덉쑖 ?좏삎</h2>
             <span class="info-tooltip" tabindex="0">
               i
               <span class="tooltip-bubble">
-                소득과 지출 균형, 저축 상태, 투자 경험, 금융 목표 답변을 종합해 가장 가까운 유형으로 분류해요.
+                ?뚮뱷怨?吏異?洹좏삎, ?異??곹깭, ?ъ옄 寃쏀뿕, 湲덉쑖 紐⑺몴 ?듬???醫낇빀??媛??媛源뚯슫 ?좏삎?쇰줈 遺꾨쪟?댁슂.
               </span>
             </span>
           </div>
@@ -110,17 +110,17 @@
         </div>
 
         <div class="result-card insight-card strengths-card">
-          <h2>강점</h2>
+          <h2>媛뺤젏</h2>
           <ul class="insight-list">
             <li v-for="item in result.strengths" :key="item">
-              <span>✓</span>
+              <span>??</span>
               {{ item }}
             </li>
           </ul>
         </div>
 
         <div class="result-card insight-card improvements-card">
-          <h2>보완점</h2>
+          <h2>蹂댁셿??</h2>
           <ul class="insight-list">
             <li v-for="item in result.improvements" :key="item">
               <span>!</span>
@@ -132,11 +132,11 @@
 
       <div class="result-actions">
         <RouterLink class="primary-btn" to="/roadmap">
-          금융 성장 로드맵 보기
-          <span aria-hidden="true">→</span>
+          湲덉쑖 ?깆옣 濡쒕뱶留?蹂닿린
+          <span aria-hidden="true">??</span>
         </RouterLink>
         <RouterLink class="secondary-btn" to="/diagnosis">
-          진단 다시하기
+          吏꾨떒 ?ㅼ떆?섍린
         </RouterLink>
       </div>
     </div>
@@ -147,6 +147,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import axios from 'axios'
+import { API_BASE_URL } from '../services/api'
 
 const result = ref(null)
 const roadmap = ref(null)
@@ -154,91 +155,22 @@ const typeImageErrors = ref({})
 const circleCircumference = 2 * Math.PI * 43
 
 const profileIcons = {
-  '저축 습관': '💗',
-  '소비 관리': '💳',
-  '투자 성향': '📈',
-  '자산 관리': '🏦',
+  '저축 습관': 'S',
+  '소비 관리': 'C',
+  '투자 성향': 'I',
+  '자산 관리': 'A',
 }
 
 const typeCopy = {
-  안정형: {
-    icon: '🐢',
-    description: '차분하게 모으고 지키는 데 강한 타입이에요.',
-    tags: ['꾸준저축', '안정선호', '계획형'],
+  default: {
+    icon: 'F',
+    description: '진단 결과를 바탕으로 금융 습관을 점검해보세요.',
+    tags: ['진단', '로드맵', '추천'],
   },
-  계획형: {
-    icon: '🐿',
-    description: '목표를 정하고 단계별로 모으는 데 능숙해요.',
-    tags: ['목표지향', '계획관리', '목돈형'],
-  },
-  소비러: {
-    icon: '🦊',
-    description: '생활 소비를 똑똑하게 조절할 수 있는 타입이에요.',
-    tags: ['소비관리', '실속형', '균형감'],
-  },
-  투자러: {
-    icon: '🐯',
-    description: '성장을 위해 금융 지식을 넓히면 더 좋아요.',
-    tags: ['성장형', '투자관심', '도전형'],
-  },
-  점검러: {
-    icon: '🐻',
-    description: '현재 흐름을 점검하고 기초를 다지면 안정적이에요.',
-    tags: ['재정점검', '기초관리', '회복형'],
-  },
-  자산러: {
-    icon: '🦁',
-    description: '자산을 키우는 감각이 있고 리스크 관리가 중요해요.',
-    tags: ['공격형', '자산성장', '리스크관리'],
-  },
-}
-
-const readinessCircle = computed(() => {
-  if (!result.value?.readiness_score) {
-    return 0
-  }
-
-  return (result.value.readiness_score / 100) * circleCircumference
-})
-
-const resultName = computed(() => {
-  return (result.value?.financial_type || '금융 새싹').replace(/^[^\s]+\s*/, '')
-})
-
-const getRoadmapLevelLabel = () => {
-  if (roadmap.value?.current_level_label) {
-    return roadmap.value.current_level_label
-  }
-
-  if (typeof roadmap.value?.current_level === 'number') {
-    return `Lv.${roadmap.value.current_level}`
-  }
-
-  const levels = roadmap.value?.levels || []
-  const currentLevel = levels.find((level) => {
-    if (level.is_locked) {
-      return false
-    }
-
-    const missions = level.missions || []
-    return missions.some((mission) => !mission.is_completed)
-  })
-
-  if (currentLevel?.level) {
-    return `Lv.${currentLevel.level}`
-  }
-
-  const maxLevel = Math.max(...levels.map((level) => Number(level.level) || 0))
-  return maxLevel > 0 ? `Lv.${maxLevel}` : ''
 }
 
 const typeCharacterImages = {
-  안정형: '/financial-types/stable-saver.png',
-  계획형: '/financial-types/planner-saver.png',
-  소비러: '/financial-types/smart-spender.png',
-  투자러: '/financial-types/growth-investor.png',
-  점검러: '/financial-types/finance-checker.png',
-  자산러: '/financial-types/aggressive-asset.png',
+  default: '/financial-types/stable-saver.png',
 }
 
 const resultLevel = computed(() => {
@@ -252,18 +184,13 @@ const resultLevel = computed(() => {
 
 const matchedType = computed(() => {
   const name = resultName.value
-  return Object.keys(typeCopy).find((key) => name.includes(key)) || '계획형'
-})
-
-const typeIcon = computed(() => {
-  return typeCopy[matchedType.value].icon
+  return Object.keys(typeCopy).find((key) => name.includes(key)) || 'default'
 })
 
 const typeImageSrc = computed(() => {
   if (typeImageErrors.value[matchedType.value]) {
     return ''
   }
-
   return typeCharacterImages[matchedType.value] || ''
 })
 
@@ -287,10 +214,10 @@ const countFilledStars = (value) => {
     return value
   }
 
-  if (typeof value === 'string') {
-    const matches = value.match(/★/g)
-    return matches ? matches.length : parseInt(value) || 0
-  }
+    if (typeof value === 'string') {
+      const matches = value.match(/★/g)
+      return matches ? matches.length : parseInt(value) || 0
+    }
 
   return 0
 }
@@ -308,7 +235,7 @@ const profileScoreItems = computed(() => {
       label,
       score,
       percent: score,
-      icon: profileIcons[label] || '•',
+      icon: profileIcons[label] || '?',
     }
   })
 })
@@ -326,7 +253,7 @@ const loadLatestDiagnosis = async () => {
   }
 
   try {
-    const response = await axios.get('http://localhost:8000/api/diagnosis/latest/', {
+    const response = await axios.get(`${API_BASE_URL}/api/diagnosis/latest/`, {
       withCredentials: true,
     })
 
@@ -356,7 +283,7 @@ const loadCachedRoadmap = () => {
 
 const loadRoadmap = async () => {
   try {
-    const response = await axios.get('http://localhost:8000/api/roadmap/', {
+    const response = await axios.get(`${API_BASE_URL}/api/roadmap/`, {
       withCredentials: true,
     })
 
@@ -372,3 +299,6 @@ onMounted(async () => {
   await Promise.all([loadLatestDiagnosis(), loadRoadmap()])
 })
 </script>
+
+
+

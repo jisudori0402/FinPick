@@ -1,23 +1,23 @@
-<template>
+﻿<template>
   <SidebarLayout class="community-page community-hub-page" surface="white">
     <template #sidebar>
       <AppSidebar>
         <template #top>
       <button class="write-button" type="button" @click="toggleComposer">
-        ✎ 글 작성하기
+        ??湲 ?묒꽦?섍린
       </button>
         </template>
 
         <template #nav>
 
-      <nav class="community-side-nav" aria-label="커뮤니티 메뉴">
+      <nav class="community-side-nav" aria-label="而ㅻ??덊떚 硫붾돱">
         <button
           type="button"
           :class="{ active: activeSection === 'youtube' }"
           @click="showYoutube"
         >
-          <span>🔥</span>
-          인기 영상
+          <span>?뵦</span>
+          ?멸린 ?곸긽
           <em>NEW</em>
         </button>
         <button
@@ -25,8 +25,8 @@
           :class="{ active: activeSection === 'board' }"
           @click="showBoard"
         >
-          <span>💬</span>
-          게시판
+          <span>?뮠</span>
+          寃뚯떆??
         </button>
       </nav>
         </template>
@@ -35,13 +35,13 @@
 
       <div class="youtube-tip-card trending-keyword-card">
         <div class="trending-card-head">
-          <strong>실시간 검색어</strong>
+        <strong>오늘의 금융 테마</strong>
         </div>
         <ol>
           <li v-for="item in trendingKeywords" :key="item.keyword">
             <button type="button" @click="searchTrendingKeyword(item.keyword)">
               <span>{{ item.rank }}</span>
-              <strong>{{ item.keyword }}</strong>
+        <strong>오늘의 금융 테마</strong>
             </button>
           </li>
         </ol>
@@ -54,8 +54,8 @@
       <section v-if="activeSection === 'youtube'" class="video-section">
         <div class="community-head">
           <div>
-            <h1>인기 영상</h1>
-            <p>관심 있는 금융 주제의 영상을 검색해보세요.</p>
+            <h1>?멸린 ?곸긽</h1>
+            <p>愿???덈뒗 湲덉쑖 二쇱젣???곸긽??寃?됲빐蹂댁꽭??</p>
           </div>
 
           <form class="community-search youtube-search" @submit.prevent="searchYoutubeVideos">
@@ -77,7 +77,7 @@
         </div>
 
         <div v-if="youtubeLoading" class="status-box">
-          영상을 검색하는 중입니다.
+          ?곸긽??寃?됲븯??以묒엯?덈떎.
         </div>
 
         <div v-else-if="youtubeError" class="status-box error">
@@ -94,7 +94,7 @@
             <div class="video-thumb youtube-thumb">
               <img v-if="video.thumbnail" :src="video.thumbnail" :alt="video.title" />
               <strong v-else>{{ video.title }}</strong>
-              <span>▶</span>
+              <span>??</span>
             </div>
             <h2>{{ video.title }}</h2>
             <p>{{ video.channel_title }}</p>
@@ -103,15 +103,15 @@
         </div>
 
         <div v-if="!youtubeLoading && !youtubeVideos.length" class="empty-box community-empty">
-          검색 결과가 없습니다.
+          寃??寃곌낵媛 ?놁뒿?덈떎.
         </div>
       </section>
 
       <section v-if="activeSection === 'board'" class="community-board-section only-board-section">
         <div class="board-header-row">
           <div>
-            <h1>커뮤니티 게시판</h1>
-            <p>금융 고민과 상품 후기를 함께 나눠보세요.</p>
+            <h1>而ㅻ??덊떚 寃뚯떆??</h1>
+            <p>湲덉쑖 怨좊?怨??곹뭹 ?꾧린瑜??④퍡 ?섎닠蹂댁꽭??</p>
           </div>
         </div>
 
@@ -128,13 +128,13 @@
           <div class="composer-actions">
             <span>{{ formMessage }}</span>
             <button class="primary-btn" type="submit" :disabled="submittingPost">
-              {{ editingPostId ? '수정하기' : '등록하기' }}
+              {{ editingPostId ? '?섏젙?섍린' : '?깅줉?섍린' }}
             </button>
           </div>
         </form>
 
         <div v-if="loading" class="status-box">
-          게시글을 불러오는 중입니다.
+          寃뚯떆湲??遺덈윭?ㅻ뒗 以묒엯?덈떎.
         </div>
 
         <div v-else-if="error" class="status-box error">
@@ -144,7 +144,7 @@
         <template v-else>
           <div class="community-tabs">
             <button :class="{ active: selectedBoard === '' }" type="button" @click="selectBoard('')">
-              전체
+              ?꾩껜
             </button>
             <button
               v-for="board in boards"
@@ -158,7 +158,7 @@
           </div>
 
           <div v-if="posts.length === 0" class="empty-box community-empty">
-            아직 등록된 게시글이 없습니다.
+            ?꾩쭅 ?깅줉??寃뚯떆湲???놁뒿?덈떎.
           </div>
 
           <div v-else class="community-content-grid">
@@ -179,14 +179,14 @@
                 <div class="post-meta">
                   <span>{{ post.author }}</span>
                   <span>{{ post.created_at }}</span>
-                  <span>댓글 {{ post.comment_count }}</span>
+                  <span>?볤? {{ post.comment_count }}</span>
                 </div>
               </article>
             </div>
 
             <aside class="post-detail-panel">
               <div v-if="!selectedPost" class="detail-placeholder">
-                게시글을 선택하면 댓글을 볼 수 있어요.
+                寃뚯떆湲???좏깮?섎㈃ ?볤???蹂????덉뼱??
               </div>
 
               <template v-else>
@@ -201,31 +201,31 @@
 
                 <div v-if="selectedPost.can_edit" class="post-actions">
                   <button class="secondary-btn" type="button" @click="startEditPost">
-                    수정
+                    ?섏젙
                   </button>
                   <button class="danger-btn" type="button" @click="deletePost">
-                    삭제
+                    ??젣
                   </button>
                 </div>
 
                 <div class="comment-list">
-                  <h3>댓글 {{ selectedPost.comments?.length || 0 }}</h3>
+                  <h3>?볤? {{ selectedPost.comments?.length || 0 }}</h3>
                   <div v-if="!selectedPost.comments?.length" class="comment-empty">
-                    아직 댓글이 없습니다.
+                    ?꾩쭅 ?볤????놁뒿?덈떎.
                   </div>
                   <article v-for="comment in selectedPost.comments" :key="comment.id" class="comment-item">
                     <div class="comment-head">
-                      <strong>{{ comment.author }}</strong>
+        <strong>오늘의 금융 테마</strong>
                       <small>{{ comment.created_at }}</small>
                     </div>
                     <template v-if="editingCommentId === comment.id">
                       <textarea v-model="editingCommentContent" rows="3"></textarea>
                       <div class="comment-actions">
                         <button class="secondary-btn" type="button" @click="cancelEditComment">
-                          취소
+                          痍⑥냼
                         </button>
                         <button class="primary-btn" type="button" @click="updateComment(comment)">
-                          저장
+                          ???
                         </button>
                       </div>
                     </template>
@@ -233,10 +233,10 @@
                       <p>{{ comment.content }}</p>
                       <div v-if="comment.can_edit || comment.can_delete" class="comment-actions">
                         <button v-if="comment.can_edit" class="secondary-btn" type="button" @click="startEditComment(comment)">
-                          수정
+                          ?섏젙
                         </button>
                         <button v-if="comment.can_delete" class="danger-btn" type="button" @click="deleteComment(comment)">
-                          삭제
+                          ??젣
                         </button>
                       </div>
                     </template>
@@ -246,7 +246,7 @@
                 <form class="comment-form" @submit.prevent="createComment">
                   <textarea v-model="commentContent" rows="3" placeholder="댓글을 입력하세요"></textarea>
                   <button class="primary-btn" type="submit" :disabled="submittingComment">
-                    댓글 달기
+                    ?볤? ?ш린
                   </button>
                 </form>
               </template>
@@ -262,6 +262,7 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
+import { API_BASE_URL } from '../services/api'
 import AppSidebar from '../components/AppSidebar.vue'
 import SidebarLayout from '../components/SidebarLayout.vue'
 
@@ -272,8 +273,8 @@ const posts = ref([])
 const selectedBoard = ref('')
 const selectedPost = ref(null)
 const activeSection = ref('youtube')
-const selectedTopic = ref('전체')
-const youtubeQuery = ref('금융 투자')
+const selectedTopic = ref('?꾩껜')
+const youtubeQuery = ref('湲덉쑖 ?ъ옄')
 const youtubeVideos = ref([])
 const youtubeLoading = ref(false)
 const youtubeError = ref('')
@@ -295,13 +296,13 @@ const postForm = ref({
   content: '',
 })
 
-const videoTopics = ['전체', '재테크 기초', '주식 투자', 'ETF', '절세 전략', '부동산', '연금·노후', '가격 관리']
+const videoTopics = ['전체', '재테크 기초', '주식 투자', 'ETF', '절세 전략', '부동산', '연금·은퇴', '가격 관리']
 
 const searchYoutubeVideos = async () => {
   const query = youtubeQuery.value.trim()
   if (!query) {
     youtubeVideos.value = []
-    youtubeError.value = '검색어를 입력해 주세요.'
+    youtubeError.value = '寃?됱뼱瑜??낅젰??二쇱꽭??'
     return
   }
 
@@ -309,7 +310,7 @@ const searchYoutubeVideos = async () => {
   youtubeError.value = ''
 
   try {
-    const response = await axios.get('http://localhost:8000/api/youtube/search/', {
+    const response = await axios.get(`${API_BASE_URL}/api/youtube/search/`, {
       params: { q: query },
       withCredentials: true,
     })
@@ -318,7 +319,7 @@ const searchYoutubeVideos = async () => {
     loadTrendingKeywords()
   } catch (err) {
     youtubeVideos.value = []
-    youtubeError.value = err.response?.data?.message || '영상을 검색하지 못했습니다.'
+    youtubeError.value = err.response?.data?.message || '?곸긽??寃?됲븯吏 紐삵뻽?듬땲??'
     console.error(err)
   } finally {
     youtubeLoading.value = false
@@ -327,7 +328,7 @@ const searchYoutubeVideos = async () => {
 
 const loadTrendingKeywords = async () => {
   try {
-    const response = await axios.get('http://localhost:8000/api/trending-keywords/', {
+    const response = await axios.get(`${API_BASE_URL}/api/trending-keywords/`, {
       withCredentials: true,
     })
     trendingKeywords.value = response.data.keywords || []
@@ -345,7 +346,7 @@ const searchTrendingKeyword = (keyword) => {
 
 const selectVideoTopic = (topic) => {
   selectedTopic.value = topic
-  youtubeQuery.value = topic === '전체' ? '금융 투자' : topic
+  youtubeQuery.value = topic === '?꾩껜' ? '湲덉쑖 ?ъ옄' : topic
   searchYoutubeVideos()
 }
 
@@ -371,7 +372,7 @@ const loadPosts = async () => {
 
   try {
     const params = selectedBoard.value ? { board: selectedBoard.value } : {}
-    const response = await axios.get('http://localhost:8000/api/community/posts/', {
+    const response = await axios.get(`${API_BASE_URL}/api/community/posts/`, {
       params,
       withCredentials: true,
     })
@@ -391,7 +392,7 @@ const loadPosts = async () => {
       }
     }
   } catch (err) {
-    error.value = err.response?.data?.message || '커뮤니티 게시글을 불러오지 못했습니다.'
+    error.value = err.response?.data?.message || '而ㅻ??덊떚 寃뚯떆湲??遺덈윭?ㅼ? 紐삵뻽?듬땲??'
     console.error(err)
   } finally {
     loading.value = false
@@ -400,12 +401,12 @@ const loadPosts = async () => {
 
 const loadPostDetail = async (postId) => {
   try {
-    const response = await axios.get(`http://localhost:8000/api/community/posts/${postId}/`, {
+    const response = await axios.get(`${API_BASE_URL}/api/community/posts/${postId}/`, {
       withCredentials: true,
     })
     selectedPost.value = response.data.post
   } catch (err) {
-    error.value = err.response?.data?.message || '게시글 상세를 불러오지 못했습니다.'
+    error.value = err.response?.data?.message || '寃뚯떆湲 ?곸꽭瑜?遺덈윭?ㅼ? 紐삵뻽?듬땲??'
     console.error(err)
   }
 }
@@ -439,21 +440,21 @@ const createPost = async () => {
 
   try {
     const url = editingPostId.value
-      ? `http://localhost:8000/api/community/posts/${editingPostId.value}/`
-      : 'http://localhost:8000/api/community/posts/'
+      ? `${API_BASE_URL}/api/community/posts/${editingPostId.value}/`
+      : `${API_BASE_URL}/api/community/posts/`
     const response = await axios.post(url, formData, {
       withCredentials: true,
     })
 
     postForm.value.title = ''
     postForm.value.content = ''
-    formMessage.value = editingPostId.value ? '게시글이 수정되었습니다.' : '게시글이 등록되었습니다.'
+    formMessage.value = editingPostId.value ? '寃뚯떆湲???섏젙?섏뿀?듬땲??' : '寃뚯떆湲???깅줉?섏뿀?듬땲??'
     editingPostId.value = null
     showComposer.value = false
     selectedPost.value = response.data.post
     await loadPosts()
   } catch (err) {
-    formMessage.value = err.response?.data?.message || '게시글을 등록하지 못했습니다.'
+    formMessage.value = err.response?.data?.message || '寃뚯떆湲???깅줉?섏? 紐삵뻽?듬땲??'
     console.error(err)
   } finally {
     submittingPost.value = false
@@ -489,14 +490,14 @@ const deletePost = async () => {
   }
 
   try {
-    await axios.delete(`http://localhost:8000/api/community/posts/${selectedPost.value.id}/`, {
+    await axios.delete(`${API_BASE_URL}/api/community/posts/${selectedPost.value.id}/`, {
       withCredentials: true,
     })
 
     selectedPost.value = null
     await loadPosts()
   } catch (err) {
-    error.value = err.response?.data?.message || '게시글을 삭제하지 못했습니다.'
+    error.value = err.response?.data?.message || '寃뚯떆湲????젣?섏? 紐삵뻽?듬땲??'
     console.error(err)
   }
 }
@@ -513,7 +514,7 @@ const createComment = async () => {
 
   try {
     await axios.post(
-      `http://localhost:8000/api/community/posts/${selectedPost.value.id}/comments/`,
+      `${API_BASE_URL}/api/community/posts/${selectedPost.value.id}/comments/`,
       formData,
       {
         withCredentials: true,
@@ -524,7 +525,7 @@ const createComment = async () => {
     await loadPostDetail(selectedPost.value.id)
     await loadPosts()
   } catch (err) {
-    error.value = err.response?.data?.message || '댓글을 등록하지 못했습니다.'
+    error.value = err.response?.data?.message || '?볤????깅줉?섏? 紐삵뻽?듬땲??'
     console.error(err)
   } finally {
     submittingComment.value = false
@@ -559,7 +560,7 @@ const updateComment = async (comment) => {
   formData.append('content', editingCommentContent.value)
 
   try {
-    await axios.post(`http://localhost:8000/api/community/comments/${comment.id}/`, formData, {
+    await axios.post(`${API_BASE_URL}/api/community/comments/${comment.id}/`, formData, {
       withCredentials: true,
     })
 
@@ -567,7 +568,7 @@ const updateComment = async (comment) => {
     await loadPostDetail(selectedPost.value.id)
     await loadPosts()
   } catch (err) {
-    error.value = err.response?.data?.message || '댓글을 수정하지 못했습니다.'
+    error.value = err.response?.data?.message || '?볤????섏젙?섏? 紐삵뻽?듬땲??'
     console.error(err)
   }
 }
@@ -578,14 +579,14 @@ const deleteComment = async (comment) => {
   }
 
   try {
-    await axios.delete(`http://localhost:8000/api/community/comments/${comment.id}/`, {
+    await axios.delete(`${API_BASE_URL}/api/community/comments/${comment.id}/`, {
       withCredentials: true,
     })
 
     await loadPostDetail(selectedPost.value.id)
     await loadPosts()
   } catch (err) {
-    error.value = err.response?.data?.message || '댓글을 삭제하지 못했습니다.'
+    error.value = err.response?.data?.message || '?볤?????젣?섏? 紐삵뻽?듬땲??'
     console.error(err)
   }
 }

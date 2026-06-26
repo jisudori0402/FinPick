@@ -1,9 +1,9 @@
-<template>
+﻿<template>
   <div class="wrap login-wrap">
     <div class="card login-card">
       <span class="login-kicker">Welcome back</span>
-      <h1><strong>FinPick</strong> 로그인</h1>
-      <p>나만의 금융 성장 로드맵을 이어가려면 로그인해 주세요.</p>
+      <h1><strong>FinPick</strong> 濡쒓렇??</h1>
+      <p>?섎쭔??湲덉쑖 ?깆옣 濡쒕뱶留듭쓣 ?댁뼱媛?ㅻ㈃ 濡쒓렇?명빐 二쇱꽭??</p>
 
       <div v-if="error" class="msg">
         {{ error }}
@@ -14,14 +14,14 @@
       </div>
 
       <form @submit.prevent="submitLogin">
-        <label>아이디</label>
+        <label>?꾩씠??</label>
         <input
           v-model="username"
           required
           autocomplete="username"
         />
 
-        <label>비밀번호</label>
+        <label>鍮꾨?踰덊샇</label>
         <input
           v-model="password"
           type="password"
@@ -30,18 +30,17 @@
         />
 
         <button class="btn" type="submit">
-          로그인
-        </button>
+          濡쒓렇??        </button>
       </form>
 
       <p class="password-find-link">
-        비밀번호를 잊으셨나요?
-        <RouterLink to="/password-reset">비밀번호 찾기</RouterLink>
+        鍮꾨?踰덊샇瑜??딆쑝?⑤굹??
+        <RouterLink to="/password-reset">鍮꾨?踰덊샇 李얘린</RouterLink>
       </p>
 
       <p class="signup-link">
-        아직 계정이 없나요?
-        <RouterLink to="/signup">회원가입</RouterLink>
+        ?꾩쭅 怨꾩젙???녿굹??
+        <RouterLink to="/signup">?뚯썝媛??</RouterLink>
       </p>
     </div>
   </div>
@@ -51,6 +50,7 @@
 import { ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import axios from 'axios'
+import { API_BASE_URL } from '../services/api'
 import { notifyAuthChanged } from '../services/auth'
 
 const router = useRouter()
@@ -66,7 +66,7 @@ const submitLogin = async () => {
 
   try {
     const response = await axios.post(
-      'http://localhost:8000/api/login/',
+      `${API_BASE_URL}/api/login/`,
       {
         username: username.value,
         password: password.value,
@@ -82,11 +82,11 @@ const submitLogin = async () => {
     localStorage.setItem('name', response.data.user?.name || '')
     notifyAuthChanged()
 
-    message.value = response.data.message || '로그인되었습니다.'
+    message.value = response.data.message || '濡쒓렇?몃릺?덉뒿?덈떎.'
 
     await router.push('/')
   } catch (err) {
-    error.value = err.response?.data?.message || '로그인에 실패했습니다.'
+    error.value = err.response?.data?.message || '濡쒓렇?몄뿉 ?ㅽ뙣?덉뒿?덈떎.'
     console.error(err)
   }
 }

@@ -1,7 +1,5 @@
-import axios from 'axios'
-
-const API_BASE_URL = 'http://localhost:8000'
-
+﻿import axios from 'axios'
+import { API_BASE_URL } from './api'
 export const clearAuthStorage = () => {
   localStorage.removeItem('isLoggedIn')
   localStorage.removeItem('username')

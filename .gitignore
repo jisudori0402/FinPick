@@ -18,6 +18,8 @@ staticfiles/
 # Environment files
 .env
 .env.*
+!.env.example
+!frontend/.env.example
 
 # IDE / editor settings
 .vscode/

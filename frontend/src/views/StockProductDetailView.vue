@@ -1,16 +1,16 @@
-<template>
+﻿<template>
   <section class="card panel deposit-detail-page stock-detail-page">
     <RouterLink
       class="secondary-btn back-btn icon-back-btn"
       to="/deposit-products?category=stock"
-      aria-label="주식 전체상품 목록으로"
-      title="주식 전체상품 목록으로"
+      aria-label="二쇱떇 ?꾩껜?곹뭹 紐⑸줉?쇰줈"
+      title="二쇱떇 ?꾩껜?곹뭹 紐⑸줉?쇰줈"
     >
-      ←
+      ??
     </RouterLink>
 
     <div v-if="loading" class="status-box">
-      주식 정보를 불러오는 중입니다.
+      二쇱떇 ?뺣낫瑜?遺덈윭?ㅻ뒗 以묒엯?덈떎.
     </div>
 
     <div v-else-if="error" class="status-box error">
@@ -20,31 +20,31 @@
     <div v-else-if="stock">
       <div class="stock-detail-head">
         <span class="stock-detail-logo">
-          <img v-if="stock.logo_url" :src="stock.logo_url" :alt="`${stock.name} 로고`" />
-          <template v-else>{{ stock.name?.slice(0, 1) || '주' }}</template>
+          <img v-if="stock.logo_url" :src="stock.logo_url" :alt="`${stock.name} 濡쒓퀬`" />
+          <template v-else>{{ stock.name?.slice(0, 1) || 'S' }}</template>
         </span>
         <div>
-          <small class="detail-kicker">{{ stock.market || '주식' }}</small>
+          <small class="detail-kicker">{{ stock.market || '二쇱떇' }}</small>
           <h2>{{ stock.name }}</h2>
         </div>
       </div>
 
       <div class="stock-price-grid">
         <article class="stock-price-card main">
-          <small>현재가</small>
+          <small>?꾩옱媛</small>
           <strong>{{ formatWon(stock.current_price) }}</strong>
-          <span>기준일 {{ formatStockDate(stock.base_date) }}</span>
+          <span>湲곗???{{ formatStockDate(stock.base_date) }}</span>
         </article>
 
         <article class="stock-price-card">
-          <small>전일 대비</small>
+          <small>?꾩씪 ?鍮?</small>
           <strong :class="{ positive: stock.change > 0, negative: stock.change < 0 }">
             {{ formatSignedWon(stock.change) }}
           </strong>
         </article>
 
         <article class="stock-price-card">
-          <small>등락률</small>
+          <small>?깅씫瑜?</small>
           <strong :class="{ positive: stock.change_rate > 0, negative: stock.change_rate < 0 }">
             {{ formatRate(stock.change_rate) }}
           </strong>
@@ -53,22 +53,22 @@
 
       <div class="stock-info-grid">
         <article class="stock-info-card">
-          <small>종목 코드</small>
+          <small>醫낅ぉ 肄붾뱶</small>
           <strong>{{ stock.code || '-' }}</strong>
         </article>
 
         <article class="stock-info-card">
-          <small>시장</small>
+          <small>?쒖옣</small>
           <strong>{{ stock.market || '-' }}</strong>
         </article>
 
         <article class="stock-info-card">
-          <small>거래량</small>
+          <small>嫄곕옒??</small>
           <strong>{{ formatNumber(stock.volume) }}</strong>
         </article>
 
         <article class="stock-info-card">
-          <small>시가총액</small>
+          <small>?쒓?珥앹븸</small>
           <strong>{{ formatWon(stock.market_cap) }}</strong>
         </article>
 
@@ -84,7 +84,7 @@
           type="button"
           @click="toggleFavoriteStock"
         >
-          {{ stock.is_favorite ? '관심 상품에서 제거하기' : '관심 상품 추가하기' }}
+          {{ stock.is_favorite ? '愿???곹뭹?먯꽌 ?쒓굅?섍린' : '愿???곹뭹 異붽??섍린' }}
         </button>
       </div>
 
@@ -97,6 +97,7 @@
 import { onMounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import axios from 'axios'
+import { API_BASE_URL } from '../services/api'
 
 const route = useRoute()
 
@@ -138,13 +139,13 @@ const loadStock = async () => {
   error.value = ''
 
   try {
-    const response = await axios.get(`http://localhost:8000/api/stocks/${route.params.code}/`, {
+    const response = await axios.get(`${API_BASE_URL}/api/stocks/${route.params.code}/`, {
       withCredentials: true,
     })
 
     stock.value = response.data.stock
   } catch (err) {
-    error.value = err.response?.data?.message || '주식 정보를 불러오지 못했습니다.'
+    error.value = err.response?.data?.message || '二쇱떇 ?뺣낫瑜?遺덈윭?ㅼ? 紐삵뻽?듬땲??'
     console.error(err)
   } finally {
     loading.value = false
@@ -156,7 +157,7 @@ const toggleFavoriteStock = async () => {
 
   try {
     const response = await axios.post(
-      `http://localhost:8000/api/stocks/${stock.value.code}/favorite/`,
+      `${API_BASE_URL}/api/stocks/${stock.value.code}/favorite/`,
       {
         code: stock.value.code,
         isin_code: stock.value.isin_code,
@@ -181,7 +182,7 @@ const toggleFavoriteStock = async () => {
     }
     favoriteMessage.value = response.data.message
   } catch (err) {
-    favoriteMessage.value = err.response?.data?.message || '관심 상품을 변경하지 못했습니다.'
+    favoriteMessage.value = err.response?.data?.message || '愿???곹뭹??蹂寃쏀븯吏 紐삵뻽?듬땲??'
     console.error(err)
   }
 }

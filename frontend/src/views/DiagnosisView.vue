@@ -1,10 +1,10 @@
-<template>
+﻿<template>
   <section class="diagnosis-container">
     <div class="diagnosis-intro-panel">
-      <p class="diagnosis-eyebrow">금융 진단</p>
-      <h1>나의 금융 성장<br />레벨을 알아볼까요?</h1>
+      <p class="diagnosis-eyebrow">湲덉쑖 吏꾨떒</p>
+      <h1>?섏쓽 湲덉쑖 ?깆옣<br />?덈꺼???뚯븘蹂쇨퉴??</h1>
       <p class="diagnosis-copy">
-        쉽게 질문으로 진단해 보며 내 금융 습관과 성장 방향을 확인해보세요.
+        ?쎄쾶 吏덈Ц?쇰줈 吏꾨떒??蹂대ŉ ??湲덉쑖 ?듦?怨??깆옣 諛⑺뼢???뺤씤?대낫?몄슂.
       </p>
 
       <div class="diagnosis-illustration" aria-hidden="true">
@@ -15,7 +15,7 @@
           <span></span>
           <span></span>
         </div>
-        <div class="coin-mark">₩</div>
+        <div class="coin-mark">?</div>
         <div class="plant">
           <span></span>
         </div>
@@ -73,7 +73,7 @@
             type="button"
             @click="previousQuestion"
           >
-            이전
+            ?댁쟾
           </button>
 
           <button
@@ -83,7 +83,7 @@
             type="button"
             @click="nextQuestion"
           >
-            다음
+            ?ㅼ쓬
           </button>
 
           <button
@@ -93,7 +93,7 @@
             type="button"
             @click="submitDiagnosis"
           >
-            결과 보기
+            寃곌낵 蹂닿린
           </button>
         </div>
       </div>
@@ -105,6 +105,7 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
+import { API_BASE_URL } from '../services/api'
 
 const router = useRouter()
 
@@ -123,38 +124,38 @@ const form = ref({
 const questions = [
   {
     field: 'income_level',
-    question: '현재 월 소득은 어느 정도인가요?',
-    hint: '최근 본인의 기준으로 선택해주세요.',
-    options: ['200만원 미만', '200~300만원', '300~400만원', '400~500만원', '500만원 이상'],
+    question: '?꾩옱 ???뚮뱷? ?대뒓 ?뺣룄?멸???',
+    hint: '理쒓렐 蹂몄씤??湲곗??쇰줈 ?좏깮?댁＜?몄슂.',
+    options: ['200留뚯썝 誘몃쭔', '200~300留뚯썝', '300~400留뚯썝', '400~500留뚯썝', '500留뚯썝 ?댁긽'],
   },
   {
     field: 'spending_style',
-    question: '평소 소비 스타일은 어떤 편인가요?',
-    hint: '가장 가까운 생활 패턴을 골라주세요.',
-    options: ['월급 들어오면 바로 쓴다', '필요한 만큼만 쓴다', '계획적으로 소비한다', '저축을 우선한다'],
+    question: '?됱냼 ?뚮퉬 ?ㅽ??쇱? ?대뼡 ?몄씤媛??',
+    hint: '媛??媛源뚯슫 ?앺솢 ?⑦꽩??怨⑤씪二쇱꽭??',
+    options: ['?붽툒 ?ㅼ뼱?ㅻ㈃ 諛붾줈 ?대떎', '?꾩슂??留뚰겮留??대떎', '怨꾪쉷?곸쑝濡??뚮퉬?쒕떎', '?異뺤쓣 ?곗꽑?쒕떎'],
   },
   {
     field: 'financial_goal',
-    question: '지금 가장 이루고 싶은 금융 목표는 무엇인가요?',
-    hint: '현재 가장 중요한 목표 하나를 선택해주세요.',
-    options: ['비상금 만들기', '여행 자금 모으기', '결혼 자금 준비', '내 집 마련', '투자 시작하기', '노후 준비'],
+    question: '吏湲?媛???대（怨??띠? 湲덉쑖 紐⑺몴??臾댁뾿?멸???',
+    hint: '?꾩옱 媛??以묒슂??紐⑺몴 ?섎굹瑜??좏깮?댁＜?몄슂.',
+    options: ['비상금 만들기', '여행 자금 모으기', '결혼 자금 준비', '내 집 마련', '투자 시작하기', '은퇴 준비'],
   },
   {
     field: 'investment_style',
-    question: '투자에 대해 어떻게 생각하시나요?',
-    hint: '원금 손실 가능성을 기준으로 골라주세요.',
-    options: ['원금 손실은 절대 싫다', '조금은 감수 가능', '수익을 위해 위험 감수 가능', '공격적으로 투자하고 싶다'],
+    question: '?ъ옄??????대뼸寃??앷컖?섏떆?섏슂?',
+    hint: '?먭툑 ?먯떎 媛?μ꽦??湲곗??쇰줈 怨⑤씪二쇱꽭??',
+    options: ['원금 손실은 피하고 싶다', '조금은 감수 가능', '수익을 위해 위험 감수 가능', '공격적으로 투자하고 싶다'],
   },
   {
     field: 'asset_level',
-    question: '현재 자산 규모는 어느 정도인가요?',
-    hint: '예금, 적금, 투자금 등을 합쳐서 생각해주세요.',
-    options: ['500만원 미만', '500~1,000만원', '1,000~3,000만원', '3,000만원 이상'],
+    question: '?꾩옱 ?먯궛 洹쒕え???대뒓 ?뺣룄?멸???',
+    hint: '?덇툑, ?곴툑, ?ъ옄湲??깆쓣 ?⑹퀜???앷컖?댁＜?몄슂.',
+    options: ['500留뚯썝 誘몃쭔', '500~1,000留뚯썝', '1,000~3,000留뚯썝', '3,000留뚯썝 ?댁긽'],
   },
   {
     field: 'loan_type',
-    question: '현재 보유한 대출이 있나요?',
-    hint: '가장 큰 비중을 차지하는 대출을 선택해주세요.',
+    question: '?꾩옱 蹂댁쑀???異쒖씠 ?덈굹??',
+    hint: '媛????鍮꾩쨷??李⑥??섎뒗 ?異쒖쓣 ?좏깮?댁＜?몄슂.',
     options: ['없음', '학자금 대출', '전세 대출', '신용 대출', '기타'],
   },
 ]
@@ -175,7 +176,7 @@ const selectOption = (field, option) => {
 
 const nextQuestion = () => {
   if (!currentAnswer.value) {
-    diagnosisError.value = '답변을 선택해주세요.'
+    diagnosisError.value = '?듬????좏깮?댁＜?몄슂.'
     return
   }
 
@@ -198,12 +199,12 @@ const submitDiagnosis = async () => {
   diagnosisError.value = ''
 
   if (!isAllAnswered()) {
-    diagnosisError.value = '모든 문항에 답변해주세요.'
+    diagnosisError.value = '紐⑤뱺 臾명빆???듬??댁＜?몄슂.'
     return
   }
 
   try {
-    const response = await axios.post('http://localhost:8000/api/diagnosis/', form.value, {
+    const response = await axios.post(`${API_BASE_URL}/api/diagnosis/`, form.value, {
       withCredentials: true,
     })
 
@@ -219,7 +220,7 @@ const submitDiagnosis = async () => {
 
     router.push('/diagnosis-result')
   } catch (err) {
-    diagnosisError.value = err.response?.data?.message || '진단 결과를 저장하지 못했습니다.'
+    diagnosisError.value = err.response?.data?.message || '吏꾨떒 寃곌낵瑜???ν븯吏 紐삵뻽?듬땲??'
     console.error(err)
   }
 }

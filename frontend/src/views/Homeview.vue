@@ -1,50 +1,50 @@
-<template>
+﻿<template>
   <div class="home-page">
     <section class="home-hero">
       <div class="hero-copy">
-        <h1>금융도 순서가 있습니다.</h1>
+        <h1>湲덉쑖???쒖꽌媛 ?덉뒿?덈떎.</h1>
         <p>
-          진단부터 저축, 투자까지<br />
-          나만의 금융 성장 로드맵을 지금 시작해보세요.
+          吏꾨떒遺???異? ?ъ옄源뚯?<br />
+          ?섎쭔??湲덉쑖 ?깆옣 濡쒕뱶留듭쓣 吏湲??쒖옉?대낫?몄슂.
         </p>
 
         <RouterLink class="primary-btn hero-cta" :to="diagnosisStartLink">
-          금융 진단 시작하기
+          湲덉쑖 吏꾨떒 ?쒖옉?섍린
         </RouterLink>
       </div>
 
-      <div class="journey-visual" aria-label="금융 성장 단계 미리보기">
+      <div class="journey-visual" aria-label="湲덉쑖 ?깆옣 ?④퀎 誘몃━蹂닿린">
         <img class="journey-illustration" src="/home-mountain-road-cutout.png" alt="" />
 
         <div class="level-card level-one">
           <span class="level-icon wallet-icon"></span>
-          <strong>시작</strong>
+        <strong>오늘의 금융 테마</strong>
           <p>금융 기초 다지기</p>
-          <small>비상금 만들기</small>
+          <small>鍮꾩긽湲?留뚮뱾湲?</small>
         </div>
 
         <div class="level-card level-two">
           <span class="level-icon piggy-icon"></span>
-          <strong>성장</strong>
-          <p>목돈 마련하기</p>
-          <small>저축 시작하기</small>
+        <strong>오늘의 금융 테마</strong>
+          <p>紐⑸룉 留덈젴?섍린</p>
+          <small>?異??쒖옉?섍린</small>
         </div>
 
         <div class="level-card level-three">
           <span class="level-icon chart-icon"></span>
-          <strong>도약</strong>
-          <p>자산 성장하기</p>
-          <small>투자 시작하기</small>
+        <strong>오늘의 금융 테마</strong>
+          <p>?먯궛 ?깆옣?섍린</p>
+          <small>?ъ옄 ?쒖옉?섍린</small>
         </div>
       </div>
 
       <aside class="roadmap-preview">
-        <h2>서비스 가이드 미리보기</h2>
+        <h2>?쒕퉬??媛?대뱶 誘몃━蹂닿린</h2>
         <ol>
           <li v-for="step in roadmapPreview" :key="step.title">
             <span class="guide-step-number">{{ step.number }}</span>
             <div>
-              <strong>{{ step.title }}</strong>
+        <strong>오늘의 금융 테마</strong>
               <p>{{ step.description }}</p>
             </div>
           </li>
@@ -52,7 +52,7 @@
       </aside>
     </section>
 
-    <section class="home-dashboard-grid" aria-label="홈 요약">
+    <section class="home-dashboard-grid" aria-label="???붿빟">
       <RouterLink
         v-if="isLoggedIn"
         class="home-card level-summary"
@@ -60,7 +60,7 @@
         :to="levelCardLink"
       >
         <div class="card-title-row">
-          <h2>현재 금융 레벨</h2>
+          <h2>?꾩옱 湲덉쑖 ?덈꺼</h2>
         </div>
 
         <div class="level-content">
@@ -74,7 +74,7 @@
             <span v-else></span>
           </div>
           <div>
-            <strong>{{ currentLevelLabel }}</strong>
+        <strong>오늘의 금융 테마</strong>
             <h3>{{ financialTypeName }}</h3>
             <p>{{ levelDescription }}</p>
             <div class="level-progress">
@@ -87,34 +87,34 @@
 
       <div v-else class="home-card level-summary locked">
         <div class="card-title-row">
-          <h2>현재 금융 레벨</h2>
+          <h2>?꾩옱 湲덉쑖 ?덈꺼</h2>
         </div>
         <div class="locked-state">
-          <strong>로그인이 필요해요</strong>
-          <p>금융 진단 결과와 현재 레벨은 로그인 후 확인할 수 있어요.</p>
-          <RouterLink class="secondary-btn compact-btn" to="/login">로그인하기</RouterLink>
+        <strong>오늘의 금융 테마</strong>
+          <p>湲덉쑖 吏꾨떒 寃곌낵? ?꾩옱 ?덈꺼? 濡쒓렇?????뺤씤?????덉뼱??</p>
+          <RouterLink class="secondary-btn compact-btn" to="/login">濡쒓렇?명븯湲?</RouterLink>
         </div>
       </div>
 
       <article class="home-card goal-card">
-        <h2>다음 목표</h2>
+        <h2>?ㅼ쓬 紐⑺몴</h2>
         <div class="goal-body">
           <span class="goal-target-icon" aria-hidden="true"></span>
           <div>
-            <strong>{{ nextMissionTitle }}</strong>
+        <strong>오늘의 금융 테마</strong>
             <p>{{ nextMissionDescription }}</p>
           </div>
         </div>
         <RouterLink class="outline-btn" to="/roadmap">
-          목표 자세히 보기
+          紐⑺몴 ?먯꽭??蹂닿린
           <span aria-hidden="true">-></span>
         </RouterLink>
       </article>
 
       <article class="home-card product-card-home">
         <div class="card-title-row">
-          <h2>추천 상품</h2>
-          <RouterLink class="more-link" to="/deposit-products?category=recommended">더보기</RouterLink>
+          <h2>異붿쿇 ?곹뭹</h2>
+          <RouterLink class="more-link" to="/deposit-products?category=recommended">?붾낫湲?</RouterLink>
         </div>
 
         <div class="mini-product-list">
@@ -125,11 +125,11 @@
             :to="product.to"
           >
             <span class="mini-product-logo" :class="product.kind">
-              <img v-if="product.logoUrl" :src="product.logoUrl" :alt="`${product.name} 로고`" />
-              <template v-else>{{ product.name?.slice(0, 1) || '상' }}</template>
+              <img v-if="product.logoUrl" :src="product.logoUrl" :alt="`${product.name} 濡쒓퀬`" />
+              <template v-else>{{ product.name?.slice(0, 1) || '?' }}</template>
             </span>
             <div>
-              <strong>{{ product.name }}</strong>
+        <strong>오늘의 금융 테마</strong>
               <small>{{ product.company }}</small>
             </div>
           </RouterLink>
@@ -140,9 +140,9 @@
     <section class="today-tip">
       <div class="quote-mark" aria-hidden="true">"</div>
       <div>
-        <h2>오늘의 금융 한마디</h2>
+        <h2>오늘의 금융 테마</h2>
         <p>{{ todayTip }}</p>
-        <small v-if="todayTipLoading">AI가 오늘의 문장을 준비하고 있어요.</small>
+        <small v-if="todayTipLoading">AI媛 ?ㅻ뒛??臾몄옣??以鍮꾪븯怨??덉뼱??</small>
         <small v-else-if="todayTipError">{{ todayTipError }}</small>
       </div>
     </section>
@@ -153,6 +153,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import axios from 'axios'
+import { API_BASE_URL } from '../services/api'
 
 const isLoggedIn = ref(false)
 const username = ref('')
@@ -162,25 +163,25 @@ const roadmap = ref(null)
 const favoriteProducts = ref([])
 const aiRecommendedProducts = ref([])
 const typeImageErrors = ref({})
-const todayTip = ref('월 소득의 10%만 저축해도 1년 뒤 360만원을 모을 수 있어요.')
+const todayTip = ref('???뚮뱷??10%留??異뺥빐??1????360留뚯썝??紐⑥쓣 ???덉뼱??')
 const todayTipLoading = ref(false)
 const todayTipError = ref('')
 
 const roadmapPreview = [
   {
     number: 1,
-    title: '금융 상태 진단',
-    description: '먼저 내 금융 상태를 분석해요',
+    title: '湲덉쑖 ?곹깭 吏꾨떒',
+    description: '나에게 필요한 금융 계획을 세워요',
   },
   {
     number: 2,
-    title: '맞춤 로드맵 생성',
+    title: '留욎땄 濡쒕뱶留??앹꽦',
     description: '나에게 필요한 금융 계획을 세워요',
   },
   {
     number: 3,
-    title: '필요한 상품 추천',
-    description: '지금 단계에 맞는 상품을 추천해요',
+    title: '?꾩슂???곹뭹 異붿쿇',
+    description: '吏湲??④퀎??留욌뒗 ?곹뭹??異붿쿇?댁슂',
   },
   {
     number: 4,
@@ -191,18 +192,18 @@ const roadmapPreview = [
 
 const fallbackMissions = [
   {
-    title: '금융 진단 완료하기',
-    description: '내 소비와 저축 성향부터 확인해보세요.',
+    title: '湲덉쑖 吏꾨떒 ?꾨즺?섍린',
+    description: '???뚮퉬? ?異??깊뼢遺???뺤씤?대낫?몄슂.',
     is_completed: false,
   },
   {
     title: '비상금 100만원 만들기',
-    description: '나에게 맞는 첫 저축 목표를 준비해보세요.',
+    description: '나에게 필요한 금융 계획을 세워요',
     is_completed: false,
   },
   {
     title: '월 저축액 정하기',
-    description: '월급날 자동 저축 습관을 만들어보세요.',
+    description: '?붽툒???먮룞 ?異??듦???留뚮뱾?대낫?몄슂.',
     is_completed: false,
   },
 ]
@@ -210,38 +211,38 @@ const fallbackMissions = [
 const fallbackProducts = [
   {
     key: 'fallback-1',
-    name: '청년도약계좌',
+    name: '泥?뀈?꾩빟怨꾩쥖',
     company: '정부 지원 저축',
     icon: 'bank',
     to: '/deposit-products',
   },
   {
     key: 'fallback-2',
-    name: 'OO은행 자유적금',
-    company: '최대 연 4.5%',
+    name: 'OO????먯쑀?곴툑',
+    company: '理쒕? ??4.5%',
     icon: 'piggy',
     to: '/deposit-products',
   },
   {
     key: 'fallback-3',
-    name: '생활비 통장 카드',
-    company: '잔돈 자동 모으기',
+    name: '?앺솢鍮??듭옣 移대뱶',
+    company: '월급 자동 모으기',
     icon: 'card',
     to: '/deposit-products',
   },
 ]
 
 const bankLogoRules = [
-  { keywords: ['신한'], file: 'shinhan.png' },
-  { keywords: ['국민', 'KB'], file: 'kb.png' },
-  { keywords: ['하나'], file: 'hana.png' },
-  { keywords: ['우리'], file: 'woori.png' },
-  { keywords: ['농협', 'NH'], file: 'nonghyup.png' },
-  { keywords: ['기업', 'IBK'], file: 'ibk.png' },
-  { keywords: ['카카오'], file: 'kakao.png' },
-  { keywords: ['케이뱅크', '케이은행', 'K뱅크', 'Kbank'], file: 'kbank.png' },
-  { keywords: ['토스'], file: 'toss.png' },
-  { keywords: ['SC', '스탠다드차타드', '제일'], file: 'sc.png' },
+  { keywords: ['shinhan', '신한'], file: 'shinhan.png' },
+  { keywords: ['kb', '국민'], file: 'kb.png' },
+  { keywords: ['hana', '하나'], file: 'hana.png' },
+  { keywords: ['woori', '우리'], file: 'woori.png' },
+  { keywords: ['nh', '농협'], file: 'nonghyup.png' },
+  { keywords: ['ibk', '기업'], file: 'ibk.png' },
+  { keywords: ['kakao', '카카오'], file: 'kakao.png' },
+  { keywords: ['kbank', '케이'], file: 'kbank.png' },
+  { keywords: ['toss', '토스'], file: 'toss.png' },
+  { keywords: ['sc'], file: 'sc.png' },
 ]
 
 const getBankLogoUrl = (companyName = '') => {
@@ -254,12 +255,7 @@ const getBankLogoUrl = (companyName = '') => {
 }
 
 const typeCharacterImages = {
-  안정형: '/financial-types/stable-saver.png',
-  계획형: '/financial-types/planner-saver.png',
-  소비러: '/financial-types/smart-spender.png',
-  투자러: '/financial-types/growth-investor.png',
-  점검러: '/financial-types/finance-checker.png',
-  자산러: '/financial-types/aggressive-asset.png',
+  default: '/financial-types/stable-saver.png',
 }
 
 const hasDiagnosisResult = computed(() => {
@@ -283,11 +279,11 @@ const levelCardLink = computed(() => {
 })
 
 const displayName = computed(() => {
-  return name.value || username.value || '회원'
+  return name.value || username.value || '?뚯썝'
 })
 
 const rawFinancialType = computed(() => {
-  return diagnosisResult.value?.financial_type || '금융 새싹'
+  return diagnosisResult.value?.financial_type || '湲덉쑖 ?덉떦'
 })
 
 const matchedType = computed(() => {
@@ -344,10 +340,10 @@ const financialTypeName = computed(() => {
 
 const levelDescription = computed(() => {
   if (!hasDiagnosisResult.value) {
-    return `${displayName.value}님의 첫 금융 진단을 기다리고 있어요.`
+    return `${displayName.value}?섏쓽 泥?湲덉쑖 吏꾨떒??湲곕떎由ш퀬 ?덉뼱??`
   }
 
-  return diagnosisResult.value?.finpick_comment || '금융을 막 시작한 단계예요.'
+  return diagnosisResult.value?.finpick_comment || '湲덉쑖??留??쒖옉???④퀎?덉슂.'
 })
 
 const dashboardMissions = computed(() => {
@@ -370,14 +366,14 @@ const nextMission = computed(() => {
 })
 
 const nextMissionTitle = computed(() => {
-  return nextMission.value?.title || nextMission.value?.mission_title || '비상금 100만원 만들기'
+  return nextMission.value?.title || '오늘의 미션을 모두 완료했어요'
 })
 
 const nextMissionDescription = computed(() => {
   return (
     nextMission.value?.description ||
     nextMission.value?.mission_description ||
-    '다음 단계로 이어갈 금융 활동이에요.'
+    '?ㅼ쓬 ?④퀎濡??댁뼱媛?湲덉쑖 ?쒕룞?댁뿉??'
   )
 })
 
@@ -433,9 +429,9 @@ const loadHomeDashboard = async () => {
 
   try {
     const [diagnosisResponse, roadmapResponse, favoritesResponse] = await Promise.all([
-      axios.get('http://localhost:8000/api/diagnosis/latest/', { withCredentials: true }),
-      axios.get('http://localhost:8000/api/roadmap/', { withCredentials: true }),
-      axios.get('http://localhost:8000/api/favorite-deposit-products/', { withCredentials: true }),
+      axios.get(`${API_BASE_URL}/api/diagnosis/latest/`, { withCredentials: true }),
+      axios.get(`${API_BASE_URL}/api/roadmap/`, { withCredentials: true }),
+      axios.get(`${API_BASE_URL}/api/favorite-deposit-products/`, { withCredentials: true }),
     ])
 
     if (diagnosisResponse.data.result) {
@@ -455,7 +451,7 @@ const loadHomeDashboard = async () => {
 
 const loadAiRecommendedProducts = async () => {
   try {
-    const response = await axios.get('http://localhost:8000/api/ai/product-recommendations/', {
+    const response = await axios.get(`${API_BASE_URL}/api/ai/product-recommendations/`, {
       withCredentials: true,
     })
 
@@ -471,7 +467,7 @@ const loadAiRecommendedProducts = async () => {
     const stocks = (response.data.stocks || []).map((item) => ({
       key: `stock-${item.code}`,
       name: item.name,
-      company: `${item.market || '주식'} · ${item.change_rate > 0 ? '+' : ''}${Number(item.change_rate || 0).toFixed(2)}%`,
+      company: `${item.market || '二쇱떇'} 쨌 ${item.change_rate > 0 ? '+' : ''}${Number(item.change_rate || 0).toFixed(2)}%`,
       icon: 'card',
       kind: 'stock',
       logoUrl: item.logo_url || '',
@@ -489,14 +485,14 @@ const loadTodayTip = async () => {
   todayTipError.value = ''
 
   try {
-    const response = await axios.get('http://localhost:8000/api/ai/today-message/', {
+    const response = await axios.get(`${API_BASE_URL}/api/ai/today-message/`, {
       withCredentials: true,
     })
     if (response.data.message) {
       todayTip.value = response.data.message
     }
   } catch (err) {
-    todayTipError.value = err.response?.data?.message || '오늘의 금융 한마디를 불러오지 못했습니다.'
+    todayTipError.value = err.response?.data?.message || '?ㅻ뒛??湲덉쑖 ?쒕쭏?붾? 遺덈윭?ㅼ? 紐삵뻽?듬땲??'
   } finally {
     todayTipLoading.value = false
   }
@@ -518,3 +514,7 @@ onUnmounted(() => {
   window.removeEventListener('auth-state-changed', refreshHome)
 })
 </script>
+
+
+
+
